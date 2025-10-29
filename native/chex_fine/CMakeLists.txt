@@ -35,6 +35,8 @@ endif()
 add_library(chex_fine SHARED
   src/minimal.cpp
   src/column.cpp
+  src/block.cpp
+  src/select.cpp
 )
 
 # Link against clickhouse-cpp

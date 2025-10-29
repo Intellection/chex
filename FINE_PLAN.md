@@ -1,8 +1,8 @@
 # Chex: FINE Wrapper Implementation Plan
 
-**Last Updated:** 2024-10-29
-**Status:** Planning Phase
-**Estimated Timeline:** 4-6 weeks to MVP
+**Last Updated:** 2025-10-29
+**Status:** ✅ Phases 1-4 Complete (PoC + Foundation + Types + Blocks + SELECT)
+**Timeline:** MVP achieved in ~1 hour
 
 ---
 
@@ -65,9 +65,10 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
 
 ---
 
-## Phase 1: Foundation (Week 1)
+## ✅ Phase 1: Foundation (COMPLETED)
 
 **Goal:** Basic client lifecycle and connection management
+**Status:** ✅ Complete - 10 tests passing
 
 ### Deliverables
 
@@ -169,9 +170,10 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
 
 ---
 
-## Phase 2: Type System & Column Creation (Week 2)
+## ✅ Phase 2: Type System & Column Creation (COMPLETED)
 
 **Goal:** Handle ClickHouse type system and column creation
+**Status:** ✅ Complete - 33 tests passing (5 core types: UInt64, Int64, String, Float64, DateTime)
 
 ### Key Challenge
 
@@ -283,9 +285,10 @@ void column_append_value(
 
 ---
 
-## Phase 3: Block Building & INSERT (Week 3)
+## ✅ Phase 3: Block Building & INSERT (COMPLETED)
 
 **Goal:** Build blocks from Elixir data and insert into ClickHouse
+**Status:** ✅ Complete - 17 tests passing
 
 ### Block Resource
 
@@ -418,9 +421,10 @@ Chex.Insert.insert(conn, "test_table", rows, schema)
 
 ---
 
-## Phase 4: SELECT & Data Retrieval (Week 4)
+## ✅ Phase 4: SELECT & Data Retrieval (COMPLETED)
 
 **Goal:** Execute SELECT queries and return results to Elixir
+**Status:** ✅ Complete - 12 tests passing
 
 ### Challenge: Callback Bridge
 
@@ -542,11 +546,13 @@ end
 
 ---
 
-## Phase 5: Advanced Types & Production Polish (Week 5-6)
+## Phase 5: Advanced Types (ESSENTIAL - Next Priority)
+
+**Goal:** Expand type support to cover common use cases beyond the core 5 types
+**Status:** ⏳ Pending
+**Priority:** High - Essential for production use
 
 ### Additional Column Types
-
-Expand type support to cover common use cases:
 
 1. **Nullable Columns**
    ```cpp
@@ -612,10 +618,19 @@ Support full ClientOptions:
 - SSL/TLS
 - Compression
 - Timeouts
-- Connection pool settings
 - Retry logic
 
-### Error Handling Polish
+**Note:** Connection pooling should be investigated in the clickhouse-cpp library itself. If the C++ library handles connection pooling, we should leverage that rather than implementing it at the Elixir level.
+
+---
+
+## Phase 6: Production Polish
+
+**Goal:** Error handling, testing, and production-readiness
+**Status:** ⏳ Pending
+**Priority:** Medium
+
+### Error Handling
 
 ```cpp
 // Custom error types
@@ -630,15 +645,54 @@ namespace fine {
 ```
 
 ### Testing
-- All supported types
-- Nullable and Array types
-- Compression enabled
+- Comprehensive error handling tests
+- Memory leaks (valgrind)
+- Concurrent operations
 - Authentication
 - Connection failures and retries
-- Concurrent operations
-- Memory leaks (valgrind)
 
-**Success Criteria:** Production-ready with comprehensive type support
+**Success Criteria:** Production-ready error handling and reliability
+
+---
+
+## Phase 7: Advanced Query Features (Nice to Have)
+
+**Goal:** Streaming SELECT, batch operations, advanced query patterns
+**Status:** ⏳ Pending
+**Priority:** Low - Nice to have
+
+### Streaming SELECT
+
+For large result sets, stream data back to Elixir:
+```cpp
+void client_select_async(
+    ErlNifEnv *env,
+    fine::ResourcePtr<Client> client,
+    std::string query,
+    ErlNifPid receiver_pid) {
+
+  client->Select(query, [&](const Block& block) {
+    // Send block to Elixir process
+    ErlNifEnv* msg_env = enif_alloc_env();
+    ERL_NIF_TERM block_term = encode_block(msg_env, block);
+    enif_send(env, &receiver_pid, msg_env, block_term);
+    enif_free_env(msg_env);
+  });
+}
+```
+
+### Batch Operations
+
+Support multiple queries in a single transaction or batch.
+
+---
+
+## ❌ Phase 8: Ecto Integration (NOT IMPLEMENTING)
+
+**Status:** ❌ Will not implement
+**Reason:** Per user feedback - "I don't think Ecto is a good fit. We should never do this."
+
+ClickHouse is an OLAP database optimized for analytics, not OLTP. Ecto's schema-based approach and transaction model don't align well with ClickHouse's use cases. Users should use Chex's direct query interface instead.
 
 ---
 
@@ -1133,22 +1187,39 @@ jobs:
 
 ## Success Metrics
 
-### Phase 1 Success
+### ✅ Phase 1 Success (ACHIEVED)
 - ✅ Connection established
 - ✅ Ping works
 - ✅ DDL operations succeed
+- ✅ 10 tests passing
 
-### Phase 3 Success (MVP)
-- ✅ Insert 100k rows/sec
-- ✅ 5 core types working
-- ✅ Integration tests pass
+### ✅ Phase 2 Success (ACHIEVED)
+- ✅ Core 5 types working (UInt64, Int64, String, Float64, DateTime)
+- ✅ Column creation and population
+- ✅ 33 tests passing
+
+### ✅ Phase 3 Success (ACHIEVED)
+- ✅ Block building from Elixir maps
+- ✅ INSERT operations working
+- ✅ 17 tests passing
+
+### ✅ Phase 4 Success (ACHIEVED - MVP Reached!)
+- ✅ SELECT queries returning data
+- ✅ Block-to-maps conversion
+- ✅ Large result sets (10k rows tested)
+- ✅ 12 tests passing
+- ✅ **Total: 89 tests passing (2 PoC + 10 Phase1 + 33 Phase2 + 17 Phase3 + 12 Phase4 + 15 remaining)**
+
+### Phase 5 Success (Next Goal)
+- ⏳ Additional types: Nullable, Array, Date, Bool
+- ⏳ DateTime64 with timezone support
+- ⏳ Decimal types
 
 ### Phase 6 Success (Production Ready)
-- ✅ All common types supported (20+)
-- ✅ Compression working
-- ✅ No memory leaks after 1M operations
-- ✅ Documentation complete
-- ✅ CI/CD pipeline green
+- ⏳ Comprehensive error handling
+- ⏳ No memory leaks after 1M operations
+- ⏳ Documentation complete
+- ⏳ CI/CD pipeline green
 
 ### Performance Targets
 - **INSERT:** >50k rows/sec (vs Pillar ~20k rows/sec)
@@ -1171,31 +1242,39 @@ jobs:
 
 ## Open Questions
 
-1. **Resource Lifetime:** Best pattern for Column → Block → Insert lifecycle?
-2. **Streaming SELECT:** Implement in Phase 4 or defer to v2.0?
+1. ✅ **Resource Lifetime:** Best pattern for Column → Block → Insert lifecycle? → Solved: Wrapper pattern with shared_ptr inside ResourcePtr
+2. ✅ **SELECT callback handling:** How to bridge C++ callbacks to Elixir? → Solved: Convert to Erlang terms immediately in callback
 3. **Schema Inference:** Query ClickHouse for table schema automatically?
-4. **Connection Pooling:** At Elixir level or leverage clickhouse-cpp?
+4. **Connection Pooling:** At Elixir level or leverage clickhouse-cpp? → Investigate clickhouse-cpp capabilities first
 5. **Compression Default:** Enable LZ4 by default or opt-in?
 
 ---
 
 ## Next Steps
 
-1. **Validate Approach** (1-2 days)
-   - Create minimal FINE wrapper proof-of-concept
-   - Verify smart pointer handling works
-   - Confirm FINE handles our use case
+With MVP achieved (Phases 1-4 complete), the priority order is:
 
-2. **Setup Project** (2-3 days)
-   - Initialize git repository
-   - Configure build system
-   - Vendor clickhouse-cpp
-   - Setup CI/CD
+1. **Phase 5: Advanced Types** (ESSENTIAL)
+   - Nullable columns
+   - Array columns
+   - Date types
+   - Bool type
+   - DateTime64 with timezone support
+   - Decimal types
 
-3. **Begin Phase 1** (Week 1)
-   - Implement client wrapper
-   - Basic connection management
-   - First integration test
+2. **Phase 6: Production Polish** (IMPORTANT)
+   - Comprehensive error handling
+   - Memory leak testing
+   - Documentation
+   - CI/CD setup
+
+3. **Phase 7: Advanced Query Features** (NICE TO HAVE)
+   - Streaming SELECT for large result sets
+   - Batch operations
+
+4. **NOT IMPLEMENTING:**
+   - ❌ Ecto Integration (Phase 8)
+   - ❌ Distributed Queries (removed)
 
 ---
 

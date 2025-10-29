@@ -30,13 +30,13 @@ defmodule Chex.Native do
   def column_datetime_append(_col, _timestamp), do: :erlang.nif_error(:nif_not_loaded)
   def column_size(_col), do: :erlang.nif_error(:nif_not_loaded)
 
-  # TODO: Phase 3 - Block NIFs (to be implemented)
-  # def block_create(), do: :erlang.nif_error(:nif_not_loaded)
-  # def block_append_column(_block, _name, _column), do: :erlang.nif_error(:nif_not_loaded)
-  # def block_row_count(_block), do: :erlang.nif_error(:nif_not_loaded)
-  # def client_insert(_client, _table_name, _block), do: :erlang.nif_error(:nif_not_loaded)
+  # Phase 3 - Block NIFs
+  def block_create(), do: :erlang.nif_error(:nif_not_loaded)
+  def block_append_column(_block, _name, _column), do: :erlang.nif_error(:nif_not_loaded)
+  def block_row_count(_block), do: :erlang.nif_error(:nif_not_loaded)
+  def block_column_count(_block), do: :erlang.nif_error(:nif_not_loaded)
+  def client_insert(_client, _table_name, _block), do: :erlang.nif_error(:nif_not_loaded)
 
-  # TODO: Phase 4 - SELECT NIFs (to be implemented)
-  # def client_select(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
-  # def block_to_maps(_block), do: :erlang.nif_error(:nif_not_loaded)
+  # Phase 4 - SELECT NIFs
+  def client_select(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
 end

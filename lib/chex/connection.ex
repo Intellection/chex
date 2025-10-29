@@ -75,6 +75,20 @@ defmodule Chex.Connection do
     GenServer.call(conn, :reset)
   end
 
+  @doc """
+  Executes a SELECT query and returns results as a list of maps.
+
+  ## Examples
+
+      {:ok, rows} = Chex.Connection.select(conn, "SELECT id, name FROM users")
+      # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
+
+  """
+  @spec select(GenServer.server(), String.t()) :: {:ok, [map()]} | {:error, term()}
+  def select(conn, query) do
+    GenServer.call(conn, {:select, query}, :infinity)
+  end
+
   # GenServer callbacks
 
   @impl true
@@ -118,6 +132,33 @@ defmodule Chex.Connection do
     try do
       Native.client_reset_connection(state.client)
       {:reply, :ok, state}
+    rescue
+      e -> {:reply, {:error, Exception.message(e)}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:insert, table, rows, schema}, _from, state) do
+    try do
+      # Build block from rows
+      block = Chex.Insert.build_block(rows, schema)
+
+      # Insert block
+      Native.client_insert(state.client, table, block)
+
+      {:reply, :ok, state}
+    rescue
+      e -> {:reply, {:error, Exception.message(e)}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:select, query}, _from, state) do
+    try do
+      # client_select returns list of maps directly
+      rows = Native.client_select(state.client, query)
+
+      {:reply, {:ok, rows}, state}
     rescue
       e -> {:reply, {:error, Exception.message(e)}, state}
     end
