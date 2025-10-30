@@ -161,14 +161,15 @@ ERL_NIF_TERM column_to_elixir_list(ErlNifEnv *env, ColumnRef col) {
 
       // This is a ColumnTuple with 2 columns: keys and values
       if (auto tuple_col = kv_tuples->As<ColumnTuple>()) {
-        size_t map_size = tuple_col->Size();  // Number of key-value pairs
-
-        // Build Elixir map
-        ERL_NIF_TERM elixir_map = enif_make_new_map(env);
-
         // Get the keys and values columns
         auto keys_col = tuple_col->At(0);
         auto values_col = tuple_col->At(1);
+
+        // The number of key-value pairs is the size of the keys/values columns
+        size_t map_size = keys_col->Size();
+
+        // Build Elixir map
+        ERL_NIF_TERM elixir_map = enif_make_new_map(env);
 
         // Convert both columns to Elixir lists
         ERL_NIF_TERM keys_list = column_to_elixir_list(env, keys_col);
@@ -237,19 +238,19 @@ ERL_NIF_TERM column_to_elixir_list(ErlNifEnv *env, ColumnRef col) {
     for (size_t i = 0; i < count; i++) {
       if (nullable_col->IsNull(i)) {
         values.push_back(enif_make_atom(env, "nil"));
-      } else if (auto uint64_col = nested->As<ColumnUInt64>()) {
-        values.push_back(enif_make_uint64(env, uint64_col->At(i)));
-      } else if (auto int64_col = nested->As<ColumnInt64>()) {
-        values.push_back(enif_make_int64(env, int64_col->At(i)));
-      } else if (auto string_col = nested->As<ColumnString>()) {
-        std::string_view val_view = string_col->At(i);
-        std::string val(val_view);
-        ErlNifBinary bin;
-        enif_alloc_binary(val.size(), &bin);
-        std::memcpy(bin.data, val.data(), val.size());
-        values.push_back(enif_make_binary(env, &bin));
-      } else if (auto float64_col = nested->As<ColumnFloat64>()) {
-        values.push_back(enif_make_double(env, float64_col->At(i)));
+      } else {
+        // Generic handling: slice the nested column to get just the i-th value,
+        // then recursively convert it. This handles all types uniformly.
+        auto single_value_col = nested->Slice(i, 1);
+        ERL_NIF_TERM elem_list = column_to_elixir_list(env, single_value_col);
+        // Extract first element from the list
+        ERL_NIF_TERM head, tail;
+        if (enif_get_list_cell(env, elem_list, &head, &tail)) {
+          values.push_back(head);
+        } else {
+          // Should never happen, but be defensive
+          values.push_back(enif_make_atom(env, "error"));
+        }
       }
     }
   }
@@ -376,26 +377,108 @@ ERL_NIF_TERM block_to_maps_impl(ErlNifEnv *env, std::shared_ptr<Block> block) {
         auto nested = array_col->GetAsColumn(i);
         column_values.push_back(column_to_elixir_list(env, nested));
       }
+    } else if (auto map_col = col->As<ColumnMap>()) {
+      // Handle map columns - use column_to_elixir_list for complex nested structure
+      for (size_t i = 0; i < row_count; i++) {
+        auto kv_tuples = map_col->GetAsColumn(i);
+
+        if (auto tuple_col = kv_tuples->As<ColumnTuple>()) {
+          auto keys_col = tuple_col->At(0);
+          auto values_col = tuple_col->At(1);
+          size_t map_size = keys_col->Size();
+
+          ERL_NIF_TERM elixir_map = enif_make_new_map(env);
+          ERL_NIF_TERM keys_list = column_to_elixir_list(env, keys_col);
+          ERL_NIF_TERM values_list = column_to_elixir_list(env, values_col);
+
+          for (size_t j = 0; j < map_size; j++) {
+            ERL_NIF_TERM key, key_tail, value, value_tail;
+            if (enif_get_list_cell(env, keys_list, &key, &key_tail) &&
+                enif_get_list_cell(env, values_list, &value, &value_tail)) {
+              enif_make_map_put(env, elixir_map, key, value, &elixir_map);
+              keys_list = key_tail;
+              values_list = value_tail;
+            }
+          }
+          column_values.push_back(elixir_map);
+        } else {
+          column_values.push_back(enif_make_new_map(env));
+        }
+      }
+    } else if (auto tuple_col = col->As<ColumnTuple>()) {
+      // Handle tuple columns - use column_to_elixir_list for complex logic
+      for (size_t i = 0; i < row_count; i++) {
+        size_t tuple_size = tuple_col->TupleSize();
+        std::vector<ERL_NIF_TERM> tuple_elements;
+        tuple_elements.reserve(tuple_size);
+
+        for (size_t j = 0; j < tuple_size; j++) {
+          auto element_col = tuple_col->At(j);
+          auto single_value_col = element_col->Slice(i, 1);
+          ERL_NIF_TERM elem_list = column_to_elixir_list(env, single_value_col);
+          ERL_NIF_TERM head, tail;
+          if (enif_get_list_cell(env, elem_list, &head, &tail)) {
+            tuple_elements.push_back(head);
+          } else {
+            tuple_elements.push_back(enif_make_atom(env, "error"));
+          }
+        }
+        column_values.push_back(enif_make_tuple_from_array(env, tuple_elements.data(), tuple_elements.size()));
+      }
+    } else if (auto enum8_col = col->As<ColumnEnum8>()) {
+      // Handle Enum8 columns
+      for (size_t i = 0; i < row_count; i++) {
+        std::string_view name = enum8_col->NameAt(i);
+        ErlNifBinary bin;
+        enif_alloc_binary(name.size(), &bin);
+        std::memcpy(bin.data, name.data(), name.size());
+        column_values.push_back(enif_make_binary(env, &bin));
+      }
+    } else if (auto enum16_col = col->As<ColumnEnum16>()) {
+      // Handle Enum16 columns
+      for (size_t i = 0; i < row_count; i++) {
+        std::string_view name = enum16_col->NameAt(i);
+        ErlNifBinary bin;
+        enif_alloc_binary(name.size(), &bin);
+        std::memcpy(bin.data, name.data(), name.size());
+        column_values.push_back(enif_make_binary(env, &bin));
+      }
+    } else if (auto lc_col = col->As<ColumnLowCardinality>()) {
+      // Handle LowCardinality columns
+      for (size_t i = 0; i < row_count; i++) {
+        auto item = lc_col->GetItem(i);
+        if (item.type == Type::String) {
+          auto val = item.get<std::string_view>();
+          ErlNifBinary bin;
+          enif_alloc_binary(val.size(), &bin);
+          std::memcpy(bin.data, val.data(), val.size());
+          column_values.push_back(enif_make_binary(env, &bin));
+        } else if (item.type == Type::Void) {
+          column_values.push_back(enif_make_atom(env, "nil"));
+        } else {
+          throw std::runtime_error("Unsupported LowCardinality inner type");
+        }
+      }
     } else if (auto nullable_col = col->As<ColumnNullable>()) {
-      // Handle nullable columns
+      // Handle nullable columns - use generic approach via column_to_elixir_list
       auto nested = nullable_col->Nested();
 
       for (size_t i = 0; i < row_count; i++) {
         if (nullable_col->IsNull(i)) {
           column_values.push_back(enif_make_atom(env, "nil"));
-        } else if (auto uint64_col = nested->As<ColumnUInt64>()) {
-          column_values.push_back(enif_make_uint64(env, uint64_col->At(i)));
-        } else if (auto int64_col = nested->As<ColumnInt64>()) {
-          column_values.push_back(enif_make_int64(env, int64_col->At(i)));
-        } else if (auto string_col = nested->As<ColumnString>()) {
-          std::string_view val_view = string_col->At(i);
-          std::string val(val_view);
-          ErlNifBinary bin;
-          enif_alloc_binary(val.size(), &bin);
-          std::memcpy(bin.data, val.data(), val.size());
-          column_values.push_back(enif_make_binary(env, &bin));
-        } else if (auto float64_col = nested->As<ColumnFloat64>()) {
-          column_values.push_back(enif_make_double(env, float64_col->At(i)));
+        } else {
+          // Generic handling: slice the nested column to get just the i-th value,
+          // then recursively convert it. This handles all types uniformly.
+          auto single_value_col = nested->Slice(i, 1);
+          ERL_NIF_TERM elem_list = column_to_elixir_list(env, single_value_col);
+          // Extract first element from the list
+          ERL_NIF_TERM head, tail;
+          if (enif_get_list_cell(env, elem_list, &head, &tail)) {
+            column_values.push_back(head);
+          } else {
+            // Should never happen, but be defensive
+            column_values.push_back(enif_make_atom(env, "error"));
+          }
         }
       }
     }
