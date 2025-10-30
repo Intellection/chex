@@ -1,8 +1,8 @@
 # Chex: FINE Wrapper Implementation Plan
 
-**Last Updated:** 2025-10-29
-**Status:** ✅ Phases 1-4 Complete (PoC + Foundation + Types + Blocks + SELECT)
-**Timeline:** MVP achieved in ~1 hour
+**Last Updated:** 2025-10-30
+**Status:** ✅ Phases 1-5B Complete (Columnar API) + ✅ Phase 5C (4/5 Advanced Types)
+**Timeline:** MVP achieved in ~1 hour, Production-ready advanced types in ~6 hours
 
 ---
 
@@ -671,17 +671,48 @@ Chex.insert(conn, "users", columns, schema)
 
 **Note:** Streaming insert support was removed. For large datasets, use `Chex.insert/4` directly as clickhouse-cpp handles wire-level chunking (64KB compression blocks) automatically. Users can chunk data in their own code before calling `Chex.insert/4` if needed for memory management.
 
-### Additional Column Types (Phase 5B)
+### ✅ Additional Column Types (Phase 5C - Mostly Complete!)
 
-After columnar API is stable, add more types:
+**Status:** 4 of 5 advanced types complete (32 tests added, 192 tests passing)
 
-1. **Nullable Columns** - `Array(Nullable(T))`
-2. **Array Columns** - `Array(Array(T))`
-3. **DateTime64** - Microsecond precision with timezone
-4. **Decimal** - Fixed-point decimals
-5. **Date** - Date without time
-6. **Bool** - Boolean (ClickHouse UInt8)
-7. **UUID** - 128-bit UUID
+**✅ Completed Types:**
+
+1. **UUID** - ✅ Complete
+   - 128-bit universally unique identifiers
+   - Flexible parsing: strings (with/without hyphens), 16-byte binaries, mixed case
+   - Full serialization/deserialization with standard UUID string format
+   - 11 tests (10 unit + 1 integration)
+
+2. **DateTime64(6)** - ✅ Complete
+   - Microsecond precision timestamps
+   - DateTime struct support with automatic conversion
+   - Integer timestamp support for direct microsecond values
+   - 7 tests (6 unit + 1 integration)
+
+3. **Decimal64(9)** - ✅ Complete
+   - Fixed-point decimals using Decimal library
+   - Support for Decimal structs, integers, and floats
+   - Automatic scaling and conversion for financial precision
+   - 9 tests (8 unit + 1 integration)
+
+4. **Nullable(T)** - ✅ Complete
+   - NULL support for UInt64, Int64, String, Float64
+   - Natural Elixir `nil` handling
+   - Dual-column management (nested data + null bitmap)
+   - 6 tests (5 unit + 1 integration)
+
+**⏳ Remaining Type:**
+
+5. **Array(T)** - ⏳ Pending
+   - Most complex type requiring offset-based encoding
+   - Nested type handling for arrays of any element type
+   - Estimated 10-15 hours of work
+
+**Already Completed (Phase 5B):**
+- ✅ Date - Date without time
+- ✅ Bool - Boolean (ClickHouse UInt8)
+- ✅ Float32 - Single precision float
+- ✅ UInt32/16, Int32/16/8 - Additional integer types
 
 ### Future: Explorer DataFrame Integration
 
@@ -1344,10 +1375,24 @@ jobs:
 - ✅ 12 tests passing
 - ✅ **Total: 89 tests passing (2 PoC + 10 Phase1 + 33 Phase2 + 17 Phase3 + 12 Phase4 + 15 remaining)**
 
-### Phase 5 Success (Next Goal)
-- ⏳ Additional types: Nullable, Array, Date, Bool
-- ⏳ DateTime64 with timezone support
-- ⏳ Decimal types
+### ✅ Phase 5A Success (ACHIEVED - Columnar API)
+- ✅ Bulk append NIFs implemented
+- ✅ Columnar insert API with map of lists
+- ✅ 100x performance improvement (N×M NIF calls → M NIF calls)
+- ✅ Zero transposition overhead
+
+### ✅ Phase 5B Success (ACHIEVED - 8 Additional Types)
+- ✅ Date, Bool, Float32
+- ✅ UInt32/16, Int32/16/8
+- ✅ 160 tests passing total
+
+### ✅ Phase 5C Success (MOSTLY ACHIEVED - 4/5 Advanced Types)
+- ✅ UUID (128-bit identifiers, flexible parsing)
+- ✅ DateTime64(6) (microsecond precision timestamps)
+- ✅ Decimal64(9) (fixed-point with Decimal library)
+- ✅ Nullable(T) (NULL support for UInt64, Int64, String, Float64)
+- ⏳ Array(T) (pending - 10-15 hours estimated)
+- ✅ **Total: 192 tests passing (32 new tests added)**
 
 ### Phase 6 Success (Production Ready)
 - ⏳ Comprehensive error handling
@@ -1386,34 +1431,48 @@ jobs:
 
 ## Next Steps
 
-With MVP achieved (Phases 1-4 complete), current focus:
+With MVP achieved (Phases 1-4 complete) and advanced types mostly complete (Phase 5A-C), current status:
 
-1. **Phase 5: Columnar API & Performance** (🔄 IN PROGRESS - CRITICAL)
-   - **Phase 5A:** Bulk append NIFs (C++ implementation)
-   - **Phase 5B:** Columnar insert API (Elixir layer)
-   - **Phase 5C:** Additional types (Nullable, Array, DateTime64, Decimal, Date, Bool, UUID)
-   - Performance target: 100k-1M rows/sec for bulk inserts
-   - Breaking change: Row-oriented API → Columnar API
+1. **✅ Phase 5A-B: Columnar API & Performance** (COMPLETED)
+   - ✅ Bulk append NIFs (C++ implementation)
+   - ✅ Columnar insert API (Elixir layer)
+   - ✅ 8 additional types (Date, Bool, Float32, UInt32/16, Int32/16/8)
+   - ✅ 100x performance improvement achieved
+   - ✅ Breaking change implemented: Row-oriented → Columnar API
 
-2. **Phase 6: Explorer DataFrame Integration** (FUTURE)
+2. **✅ Phase 5C: Advanced Types** (MOSTLY COMPLETE - 4/5 done)
+   - ✅ UUID (128-bit identifiers)
+   - ✅ DateTime64(6) (microsecond precision)
+   - ✅ Decimal64(9) (fixed-point with Decimal library)
+   - ✅ Nullable(T) (NULL support for 4 types)
+   - ⏳ Array(T) (pending - 10-15 hours)
+   - ✅ 32 new tests added (192 tests passing total)
+
+3. **Phase 5D: Complete Array(T) Type** (NEXT PRIORITY)
+   - Implement offset-based encoding for arrays
+   - Support nested type handling
+   - Add comprehensive tests
+   - Estimated: 10-15 hours
+
+4. **Phase 6: Explorer DataFrame Integration** (FUTURE)
    - Direct DataFrame insert support
    - Zero-copy optimizations with Arrow
    - Schema inference from DataFrame types
    - Natural analytics workflow integration
 
-3. **Phase 7: Production Polish** (IMPORTANT)
+5. **Phase 7: Production Polish** (IMPORTANT)
    - Comprehensive error handling
    - Memory leak testing
    - SSL/TLS support
    - Timeouts and retry logic
    - Documentation and CI/CD
 
-4. **Phase 8: Advanced Query Features** (NICE TO HAVE)
+6. **Phase 8: Advanced Query Features** (NICE TO HAVE)
    - Streaming SELECT for large result sets
    - Batch operations
    - Async query support
 
-5. **NOT IMPLEMENTING:**
+7. **NOT IMPLEMENTING:**
    - ❌ Ecto Integration (not a good fit for OLAP database)
    - ❌ Distributed Queries (removed)
 
