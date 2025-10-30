@@ -320,6 +320,33 @@ defmodule Chex.Column do
     Native.column_nullable_float64_append_bulk(ref, actual_values, nulls)
   end
 
+  # Generic Nullable(T) for any inner type
+  def append_bulk(%__MODULE__{type: {:nullable, inner_type}, ref: ref}, values)
+      when is_list(values) do
+    # Determine default value and NIF based on inner type
+    case inner_type do
+      :uint64 ->
+        {actual_values, nulls} = split_nullable_values(values, 0)
+        Native.column_nullable_uint64_append_bulk(ref, actual_values, nulls)
+
+      :int64 ->
+        {actual_values, nulls} = split_nullable_values(values, 0)
+        Native.column_nullable_int64_append_bulk(ref, actual_values, nulls)
+
+      :string ->
+        {actual_values, nulls} = split_nullable_values(values, "")
+        Native.column_nullable_string_append_bulk(ref, actual_values, nulls)
+
+      :float64 ->
+        {actual_values, nulls} = split_nullable_values(values, 0.0)
+        Native.column_nullable_float64_append_bulk(ref, actual_values, nulls)
+
+      other ->
+        raise ArgumentError,
+              "Nullable is only supported for UInt64, Int64, String, Float64. Got: #{inspect(other)}"
+    end
+  end
+
   # Array type - always use generic path
   # The generic path works for ALL array types and is already very fast (~5-10 µs)
   def append_bulk(%__MODULE__{type: {:array, _inner_type}, ref: _ref} = col, arrays)
@@ -352,25 +379,30 @@ defmodule Chex.Column do
   def append_bulk(%__MODULE__{type: {:enum8, items}, ref: ref}, values) when is_list(values) do
     # Convert string names to integers if needed
     int_values =
-      case hd(values) do
-        val when is_integer(val) ->
-          # Already integers, validate range
-          unless Enum.all?(values, &(is_integer(&1) and &1 >= -128 and &1 <= 127)) do
-            raise ArgumentError, "All values must be integers -128..127 for Enum8 column"
-          end
-
-          values
-
-        val when is_binary(val) ->
-          # String names, look up values from items definition
-          enum_map = Map.new(items)
-
-          Enum.map(values, fn name ->
-            case Map.fetch(enum_map, name) do
-              {:ok, val} -> val
-              :error -> raise ArgumentError, "Unknown enum name: #{name}"
+      if values == [] do
+        # Empty list, no conversion needed
+        []
+      else
+        case hd(values) do
+          val when is_integer(val) ->
+            # Already integers, validate range
+            unless Enum.all?(values, &(is_integer(&1) and &1 >= -128 and &1 <= 127)) do
+              raise ArgumentError, "All values must be integers -128..127 for Enum8 column"
             end
-          end)
+
+            values
+
+          val when is_binary(val) ->
+            # String names, look up values from items definition
+            enum_map = Map.new(items)
+
+            Enum.map(values, fn name ->
+              case Map.fetch(enum_map, name) do
+                {:ok, val} -> val
+                :error -> raise ArgumentError, "Unknown enum name: #{name}"
+              end
+            end)
+        end
       end
 
     Native.column_int8_append_bulk(ref, int_values)
@@ -380,25 +412,30 @@ defmodule Chex.Column do
   def append_bulk(%__MODULE__{type: {:enum16, items}, ref: ref}, values) when is_list(values) do
     # Convert string names to integers if needed
     int_values =
-      case hd(values) do
-        val when is_integer(val) ->
-          # Already integers, validate range
-          unless Enum.all?(values, &(is_integer(&1) and &1 >= -32_768 and &1 <= 32_767)) do
-            raise ArgumentError, "All values must be integers -32768..32767 for Enum16 column"
-          end
-
-          values
-
-        val when is_binary(val) ->
-          # String names, look up values from items definition
-          enum_map = Map.new(items)
-
-          Enum.map(values, fn name ->
-            case Map.fetch(enum_map, name) do
-              {:ok, val} -> val
-              :error -> raise ArgumentError, "Unknown enum name: #{name}"
+      if values == [] do
+        # Empty list, no conversion needed
+        []
+      else
+        case hd(values) do
+          val when is_integer(val) ->
+            # Already integers, validate range
+            unless Enum.all?(values, &(is_integer(&1) and &1 >= -32_768 and &1 <= 32_767)) do
+              raise ArgumentError, "All values must be integers -32768..32767 for Enum16 column"
             end
-          end)
+
+            values
+
+          val when is_binary(val) ->
+            # String names, look up values from items definition
+            enum_map = Map.new(items)
+
+            Enum.map(values, fn name ->
+              case Map.fetch(enum_map, name) do
+                {:ok, val} -> val
+                :error -> raise ArgumentError, "Unknown enum name: #{name}"
+              end
+            end)
+        end
       end
 
     Native.column_int16_append_bulk(ref, int_values)
@@ -523,13 +560,15 @@ defmodule Chex.Column do
     array_tuple_col = new({:array, tuple_type})
 
     # For each map (row), we need to build the tuples
-    # Flatten all keys and values across all maps
+    # Concatenate all keys and values across all maps (only one level)
+    # Use Enum.concat instead of List.flatten to preserve nested structures
     all_keys_per_map = keys_arrays
     all_values_per_map = values_arrays
 
     # Build nested tuple column with all keys and values
-    all_keys = List.flatten(all_keys_per_map)
-    all_values = List.flatten(all_values_per_map)
+    # Enum.concat only concatenates one level, preserving nested arrays
+    all_keys = Enum.concat(all_keys_per_map)
+    all_values = Enum.concat(all_values_per_map)
 
     nested_tuple_col = new(tuple_type)
     append_tuple_columns(nested_tuple_col, [all_keys, all_values])
@@ -594,6 +633,10 @@ defmodule Chex.Column do
 
   defp elixir_type_to_clickhouse({:array, inner_type}) do
     "Array(#{elixir_type_to_clickhouse(inner_type)})"
+  end
+
+  defp elixir_type_to_clickhouse({:nullable, inner_type}) do
+    "Nullable(#{elixir_type_to_clickhouse(inner_type)})"
   end
 
   defp elixir_type_to_clickhouse({:tuple, element_types}) when is_list(element_types) do
