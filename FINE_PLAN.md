@@ -1,8 +1,8 @@
 # Chex: FINE Wrapper Implementation Plan
 
 **Last Updated:** 2025-10-30
-**Status:** ✅ Phases 1-5 Complete - Full Columnar API with 100% Array Type Coverage
-**Timeline:** MVP achieved in ~1 hour, Production-ready with advanced types in ~8 hours
+**Status:** ✅ Phases 1-5 Complete - Full Columnar API with Complex Type Nesting Support
+**Timeline:** MVP achieved in ~1 hour, Production-ready with advanced types and nesting in ~8 hours
 
 ---
 
@@ -718,6 +718,86 @@ Chex.insert(conn, "users", columns, schema)
 - ✅ Float32 - Single precision float
 - ✅ UInt32/16, Int32/16/8 - Additional integer types
 
+### ✅ Complex Type Nesting (Phase 5E - Complete!)
+
+**Status:** All complex nesting patterns complete (227 tests passing)
+
+**Problem Discovered:**
+During integration testing, discovered critical bugs preventing complex nested types from working:
+
+1. **Map deserialization crash** - `tuple_col->Size()` returned tuple element count (2) instead of key-value pair count
+2. **Limited Nullable support** - Only handled 4 specific types (UInt64, Int64, String, Float64), missing all others
+3. **Missing type handlers** - `block_to_maps_impl` lacked handlers for Map, Tuple, Enum8, Enum16, LowCardinality
+
+**Solutions Implemented:**
+
+1. **Fixed Map SELECT in select.cpp**:
+   - Changed `tuple_col->Size()` to `keys_col->Size()` for correct map size
+   - Added Map handler to `block_to_maps_impl` for full SELECT support
+
+2. **Generic Nullable handling**:
+   ```cpp
+   // Old: Type-specific handling (4 types only)
+   if (auto uint64_col = nested->As<ColumnUInt64>()) { ... }
+   else if (auto int64_col = nested->As<ColumnInt64>()) { ... }
+   // ... only 4 types
+
+   // New: Universal generic handling (ALL types)
+   auto single_value_col = nested->Slice(i, 1);
+   ERL_NIF_TERM elem_list = column_to_elixir_list(env, single_value_col);
+   // Extract first element - works for ANY type
+   ```
+
+3. **Complete type handler coverage in block_to_maps_impl**:
+   - Added Tuple column handler
+   - Added Enum8/Enum16 handlers
+   - Added LowCardinality handler
+   - All nested type combinations now work
+
+4. **Enhanced Block.build_block for INSERT**:
+   - Added `transpose_tuples/2` - converts list of tuples to columnar format
+   - Added `transpose_maps/1` - converts list of maps to keys/values arrays
+   - Enables natural Elixir data structures: `[{a, 1}, {b, 2}]` and `[%{"k" => 1}]`
+
+**Comprehensive Integration Tests:**
+
+Created `test/nesting_integration_test.exs` with 14 full roundtrip tests:
+
+1. **Array(Nullable(T))** - Arrays with null values
+   - `Array(Nullable(String))` with mixed nulls
+   - `Array(Nullable(UInt64))` with all nulls
+
+2. **LowCardinality(Nullable(String))** - Dictionary encoding with nulls
+
+3. **Tuple with Nullable elements** - `Tuple(Nullable(String), UInt64)`
+
+4. **Map with Nullable values** - `Map(String, Nullable(UInt64))` ✓ (was crashing)
+
+5. **Array(LowCardinality(String))** - Dictionary encoding in arrays
+
+6. **Array(LowCardinality(Nullable(String)))** - Triple wrapper type!
+
+7. **Map(String, Array(UInt64))** - Arrays as map values
+
+8. **Map(String, Enum16)** - Enums as map values
+
+9. **Tuple(String, Array(UInt64))** - Arrays in tuples
+
+10. **Tuple(Enum8, UInt64)** - Enums in tuples
+
+11. **Array(Array(Nullable(UInt64)))** - Triple nesting with nulls
+
+12. **Array(Array(Array(UInt64)))** - Deep nesting stress test
+
+13. **Array(Enum8)** - Enums in arrays
+
+All 14 tests pass with full INSERT→SELECT roundtrip validation.
+
+**Impact:**
+- Enables arbitrarily complex nested types
+- Production-ready support for analytics workloads with complex schemas
+- Generic patterns ensure future types work automatically
+
 ### Future: Explorer DataFrame Integration
 
 **Status:** Documented for future implementation (Phase 6+)
@@ -1398,6 +1478,27 @@ jobs:
 - ✅ Array(T) (100% type coverage with universal generic path)
 - ✅ **Total: 213 tests passing (53 new tests added)**
 
+### ✅ Phase 5E Success (COMPLETE - Complex Type Nesting)
+- ✅ Enhanced Block.build_block to handle Tuple and Map INSERT
+- ✅ Fixed critical Map deserialization bug (incorrect size calculation)
+- ✅ Made Nullable handling generic via Slice() and recursion
+- ✅ Added missing type handlers: Map, Tuple, Enum8, Enum16, LowCardinality in block_to_maps_impl
+- ✅ Comprehensive integration tests (14 tests) with full INSERT→SELECT roundtrip validation:
+  - Array(Nullable(String)) and Array(Nullable(UInt64))
+  - LowCardinality(Nullable(String))
+  - Tuple(Nullable(String), UInt64)
+  - Map(String, Nullable(UInt64))
+  - Array(LowCardinality(String))
+  - Array(LowCardinality(Nullable(String))) - triple wrapper!
+  - Map(String, Array(UInt64))
+  - Map(String, Enum16)
+  - Tuple(String, Array(UInt64))
+  - Tuple(Enum8, UInt64)
+  - Array(Array(Nullable(UInt64))) - triple nesting
+  - Array(Array(Array(UInt64))) - deep nesting stress test
+  - Array(Enum8)
+- ✅ **Total: 227 tests passing (14 new integration tests added)**
+
 ### Phase 6 Success (Production Ready)
 - ⏳ Comprehensive error handling
 - ⏳ No memory leaks after 1M operations
@@ -1435,7 +1536,7 @@ jobs:
 
 ## Next Steps
 
-With MVP achieved (Phases 1-4 complete) and all advanced types complete (Phase 5A-D), current status:
+With MVP achieved (Phases 1-4 complete) and all advanced types complete (Phase 5A-E), current status:
 
 1. **✅ Phase 5A-B: Columnar API & Performance** (COMPLETED)
    - ✅ Bulk append NIFs (C++ implementation)
@@ -1453,13 +1554,22 @@ With MVP achieved (Phases 1-4 complete) and all advanced types complete (Phase 5
    - ✅ 53 new tests added (213 tests passing total)
    - ✅ Complete architecture documentation in `ALL_TYPES.md`
 
-3. **Phase 6: Explorer DataFrame Integration** (FUTURE)
+3. **✅ Phase 5E: Complex Type Nesting** (COMPLETED)
+   - ✅ Fixed critical Map deserialization crash
+   - ✅ Generic Nullable handling for all types
+   - ✅ Complete type handler coverage in SELECT
+   - ✅ Enhanced Block.build_block for Tuple and Map INSERT
+   - ✅ 14 comprehensive integration tests with full roundtrip validation
+   - ✅ 227 tests passing total
+   - ✅ Production-ready support for arbitrarily complex nested types
+
+4. **Phase 6: Explorer DataFrame Integration** (FUTURE)
    - Direct DataFrame insert support
    - Zero-copy optimizations with Arrow
    - Schema inference from DataFrame types
    - Natural analytics workflow integration
 
-4. **Phase 7: Production Polish** (NEXT PRIORITY)
+5. **Phase 7: Production Polish** (NEXT PRIORITY)
    - Comprehensive error handling
    - Memory leak testing
    - SSL/TLS support
