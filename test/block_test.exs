@@ -1,25 +1,20 @@
-defmodule Chex.Phase3BlockInsertTest do
-  use ExUnit.Case, async: false
-
-  @moduletag :phase3
+defmodule Chex.BlockTest do
+  use ExUnit.Case, async: true
 
   alias Chex.{Block, Native}
 
   setup do
+    # Generate unique table name for this test
+    table = "test_#{System.unique_integer([:positive, :monotonic])}_#{:rand.uniform(999_999)}"
+
     # Start connection
     {:ok, conn} = Chex.Connection.start_link(host: "localhost", port: 9000)
 
-    # Clean up any existing test table
-    try do
-      Chex.Connection.execute(conn, "DROP TABLE IF EXISTS chex_test_phase3")
-    rescue
-      _ -> :ok
-    end
-
     on_exit(fn ->
+      # Clean up test table if it exists
       if Process.alive?(conn) do
         try do
-          Chex.Connection.execute(conn, "DROP TABLE IF EXISTS chex_test_phase3")
+          Chex.Connection.execute(conn, "DROP TABLE IF EXISTS #{table}")
         rescue
           _ -> :ok
         end
@@ -28,7 +23,7 @@ defmodule Chex.Phase3BlockInsertTest do
       end
     end)
 
-    {:ok, conn: conn}
+    {:ok, conn: conn, table: table}
   end
 
   describe "Block operations" do
@@ -128,10 +123,10 @@ defmodule Chex.Phase3BlockInsertTest do
   end
 
   describe "INSERT operations" do
-    test "can insert single row", %{conn: conn} do
+    test "can insert single row", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -141,13 +136,13 @@ defmodule Chex.Phase3BlockInsertTest do
       schema = [id: :uint64, name: :string]
       columns = %{id: [1], name: ["Alice"]}
 
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
     end
 
-    test "can insert multiple rows", %{conn: conn} do
+    test "can insert multiple rows", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String,
         amount Float64
@@ -163,13 +158,13 @@ defmodule Chex.Phase3BlockInsertTest do
         amount: [100.5, 200.75, 300.25]
       }
 
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
     end
 
-    test "can insert with all supported types", %{conn: conn} do
+    test "can insert with all supported types", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         value Int64,
         name String,
@@ -195,13 +190,13 @@ defmodule Chex.Phase3BlockInsertTest do
         created_at: [~U[2024-10-29 10:00:00Z], ~U[2024-10-29 11:00:00Z]]
       }
 
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
     end
 
-    test "can insert large batch", %{conn: conn} do
+    test "can insert large batch", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         value UInt64
       ) ENGINE = Memory
@@ -215,13 +210,13 @@ defmodule Chex.Phase3BlockInsertTest do
 
       schema = [id: :uint64, value: :uint64]
 
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
     end
 
-    test "can insert with string keys in columns", %{conn: conn} do
+    test "can insert with string keys in columns", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -231,10 +226,10 @@ defmodule Chex.Phase3BlockInsertTest do
       schema = [id: :uint64, name: :string]
       columns = %{"id" => [1], "name" => ["Alice"]}
 
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
     end
 
-    test "returns error for invalid table", %{conn: conn} do
+    test "returns error for invalid table", %{conn: conn, table: _table} do
       schema = [id: :uint64]
       columns = %{id: [1]}
 
@@ -274,10 +269,10 @@ defmodule Chex.Phase3BlockInsertTest do
   end
 
   describe "Multiple sequential inserts" do
-    test "can insert multiple batches", %{conn: conn} do
+    test "can insert multiple batches", %{conn: conn, table: table} do
       # Create table
       Chex.Connection.execute(conn, """
-      CREATE TABLE chex_test_phase3 (
+      CREATE TABLE #{table} (
         id UInt64,
         batch UInt64
       ) ENGINE = Memory
@@ -287,15 +282,15 @@ defmodule Chex.Phase3BlockInsertTest do
 
       # First batch
       columns1 = %{id: [1, 2], batch: [1, 1]}
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns1, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns1, schema)
 
       # Second batch
       columns2 = %{id: [3, 4], batch: [2, 2]}
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns2, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns2, schema)
 
       # Third batch
       columns3 = %{id: [5], batch: [3]}
-      assert :ok = Chex.insert(conn, "chex_test_phase3", columns3, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns3, schema)
     end
   end
 end

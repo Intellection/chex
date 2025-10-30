@@ -669,28 +669,7 @@ columns = Chex.Conversion.rows_to_columns(rows, schema)
 Chex.insert(conn, "users", columns, schema)
 ```
 
-### Streaming Support for Large Datasets
-
-For datasets larger than memory:
-
-```elixir
-# Stream column chunks
-defmodule Chex.Insert do
-  def insert_stream(conn, table, column_stream, schema) do
-    column_stream
-    |> Stream.chunk_every(10_000)  # Batch size
-    |> Stream.each(fn columns ->
-      insert(conn, table, columns, schema)
-    end)
-    |> Stream.run()
-  end
-end
-
-# Usage
-big_columns
-|> Stream.chunk_every(10_000)
-|> Chex.Insert.insert_stream(conn, "events", schema)
-```
+**Note:** Streaming insert support was removed. For large datasets, use `Chex.insert/4` directly as clickhouse-cpp handles wire-level chunking (64KB compression blocks) automatically. Users can chunk data in their own code before calling `Chex.insert/4` if needed for memory management.
 
 ### Additional Column Types (Phase 5B)
 
@@ -1412,8 +1391,7 @@ With MVP achieved (Phases 1-4 complete), current focus:
 1. **Phase 5: Columnar API & Performance** (🔄 IN PROGRESS - CRITICAL)
    - **Phase 5A:** Bulk append NIFs (C++ implementation)
    - **Phase 5B:** Columnar insert API (Elixir layer)
-   - **Phase 5C:** Streaming support for large datasets
-   - **Phase 5D:** Additional types (Nullable, Array, DateTime64, Decimal, Date, Bool, UUID)
+   - **Phase 5C:** Additional types (Nullable, Array, DateTime64, Decimal, Date, Bool, UUID)
    - Performance target: 100k-1M rows/sec for bulk inserts
    - Breaking change: Row-oriented API → Columnar API
 

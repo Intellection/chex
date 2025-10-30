@@ -1,25 +1,20 @@
-defmodule Chex.Phase4SelectTest do
-  use ExUnit.Case, async: false
-
-  @moduletag :phase4
+defmodule Chex.QueryTest do
+  use ExUnit.Case, async: true
 
   alias Chex.Connection
 
   setup do
+    # Generate unique table name for this test
+    table = "test_#{System.unique_integer([:positive, :monotonic])}_#{:rand.uniform(999_999)}"
+
     # Start connection
     {:ok, conn} = Connection.start_link(host: "localhost", port: 9000)
 
-    # Clean up any existing test table
-    try do
-      Connection.execute(conn, "DROP TABLE IF EXISTS chex_test_phase4")
-    rescue
-      _ -> :ok
-    end
-
     on_exit(fn ->
+      # Clean up test table if it exists
       if Process.alive?(conn) do
         try do
-          Connection.execute(conn, "DROP TABLE IF EXISTS chex_test_phase4")
+          Connection.execute(conn, "DROP TABLE IF EXISTS #{table}")
         rescue
           _ -> :ok
         end
@@ -28,27 +23,27 @@ defmodule Chex.Phase4SelectTest do
       end
     end)
 
-    {:ok, conn: conn}
+    {:ok, conn: conn, table: table}
   end
 
   describe "SELECT operations" do
-    test "can select from empty table", %{conn: conn} do
+    test "can select from empty table", %{conn: conn, table: table} do
       # Create table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
       """)
 
       # Query empty table
-      assert {:ok, []} = Connection.select(conn, "SELECT * FROM chex_test_phase4")
+      assert {:ok, []} = Connection.select(conn, "SELECT * FROM #{table}")
     end
 
-    test "can select single row", %{conn: conn} do
+    test "can select single row", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -56,18 +51,18 @@ defmodule Chex.Phase4SelectTest do
 
       schema = [id: :uint64, name: :string]
       columns = %{id: [1], name: ["Alice"]}
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query
-      assert {:ok, result} = Connection.select(conn, "SELECT id, name FROM chex_test_phase4")
+      assert {:ok, result} = Connection.select(conn, "SELECT id, name FROM #{table}")
       assert length(result) == 1
       assert [%{id: 1, name: "Alice"}] = result
     end
 
-    test "can select multiple rows", %{conn: conn} do
+    test "can select multiple rows", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -80,10 +75,10 @@ defmodule Chex.Phase4SelectTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query
-      assert {:ok, result} = Connection.select(conn, "SELECT id, name FROM chex_test_phase4")
+      assert {:ok, result} = Connection.select(conn, "SELECT id, name FROM #{table}")
       assert length(result) == 3
 
       assert Enum.any?(result, fn r -> r.id == 1 && r.name == "Alice" end)
@@ -91,10 +86,10 @@ defmodule Chex.Phase4SelectTest do
       assert Enum.any?(result, fn r -> r.id == 3 && r.name == "Charlie" end)
     end
 
-    test "can select with WHERE clause", %{conn: conn} do
+    test "can select with WHERE clause", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -107,20 +102,20 @@ defmodule Chex.Phase4SelectTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query with WHERE
       assert {:ok, result} =
-               Connection.select(conn, "SELECT * FROM chex_test_phase4 WHERE id = 2")
+               Connection.select(conn, "SELECT * FROM #{table} WHERE id = 2")
 
       assert length(result) == 1
       assert [%{id: 2, name: "Bob"}] = result
     end
 
-    test "can select all supported types", %{conn: conn} do
+    test "can select all supported types", %{conn: conn, table: table} do
       # Create table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         value Int64,
         name String,
@@ -146,13 +141,13 @@ defmodule Chex.Phase4SelectTest do
         created_at: [~U[2024-10-29 10:00:00Z]]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query
       assert {:ok, [result]} =
                Connection.select(
                  conn,
-                 "SELECT id, value, name, amount, created_at FROM chex_test_phase4"
+                 "SELECT id, value, name, amount, created_at FROM #{table}"
                )
 
       assert result.id == 1
@@ -165,10 +160,10 @@ defmodule Chex.Phase4SelectTest do
       assert result.created_at == expected_ts
     end
 
-    test "can select with ORDER BY", %{conn: conn} do
+    test "can select with ORDER BY", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -181,11 +176,11 @@ defmodule Chex.Phase4SelectTest do
         name: ["Charlie", "Alice", "Bob"]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query with ORDER BY
       assert {:ok, result} =
-               Connection.select(conn, "SELECT * FROM chex_test_phase4 ORDER BY id ASC")
+               Connection.select(conn, "SELECT * FROM #{table} ORDER BY id ASC")
 
       assert length(result) == 3
       assert Enum.at(result, 0).id == 1
@@ -193,10 +188,10 @@ defmodule Chex.Phase4SelectTest do
       assert Enum.at(result, 2).id == 3
     end
 
-    test "can select with LIMIT", %{conn: conn} do
+    test "can select with LIMIT", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String
       ) ENGINE = Memory
@@ -209,17 +204,17 @@ defmodule Chex.Phase4SelectTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query with LIMIT
-      assert {:ok, result} = Connection.select(conn, "SELECT * FROM chex_test_phase4 LIMIT 2")
+      assert {:ok, result} = Connection.select(conn, "SELECT * FROM #{table} LIMIT 2")
       assert length(result) == 2
     end
 
-    test "can select specific columns", %{conn: conn} do
+    test "can select specific columns", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         name String,
         amount Float64
@@ -228,19 +223,19 @@ defmodule Chex.Phase4SelectTest do
 
       schema = [id: :uint64, name: :string, amount: :float64]
       columns = %{id: [1], name: ["Alice"], amount: [100.5]}
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query specific columns
-      assert {:ok, [result]} = Connection.select(conn, "SELECT name FROM chex_test_phase4")
+      assert {:ok, [result]} = Connection.select(conn, "SELECT name FROM #{table}")
       assert result.name == "Alice"
       refute Map.has_key?(result, :id)
       refute Map.has_key?(result, :amount)
     end
 
-    test "can select with aggregate functions", %{conn: conn} do
+    test "can select with aggregate functions", %{conn: conn, table: table} do
       # Create and populate table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         amount Float64
       ) ENGINE = Memory
@@ -253,25 +248,25 @@ defmodule Chex.Phase4SelectTest do
         amount: [100.0, 200.0, 300.0]
       }
 
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query with COUNT
       assert {:ok, [result]} =
-               Connection.select(conn, "SELECT count() as cnt FROM chex_test_phase4")
+               Connection.select(conn, "SELECT count() as cnt FROM #{table}")
 
       assert result.cnt == 3
 
       # Query with SUM
       assert {:ok, [result]} =
-               Connection.select(conn, "SELECT sum(amount) as total FROM chex_test_phase4")
+               Connection.select(conn, "SELECT sum(amount) as total FROM #{table}")
 
       assert_in_delta result.total, 600.0, 0.01
     end
 
-    test "can handle large result sets", %{conn: conn} do
+    test "can handle large result sets", %{conn: conn, table: table} do
       # Create table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         value UInt64
       ) ENGINE = Memory
@@ -284,10 +279,10 @@ defmodule Chex.Phase4SelectTest do
       }
 
       schema = [id: :uint64, value: :uint64]
-      Chex.insert(conn, "chex_test_phase4", columns, schema)
+      Chex.insert(conn, "#{table}", columns, schema)
 
       # Query all
-      assert {:ok, result} = Connection.select(conn, "SELECT * FROM chex_test_phase4")
+      assert {:ok, result} = Connection.select(conn, "SELECT * FROM #{table}")
       assert length(result) == 10_000
 
       # Verify a few rows
@@ -296,17 +291,17 @@ defmodule Chex.Phase4SelectTest do
       assert Enum.any?(result, fn r -> r.id == 10_000 && r.value == 20_000 end)
     end
 
-    test "returns error for invalid query", %{conn: conn} do
+    test "returns error for invalid query", %{conn: conn, table: _table} do
       result = Connection.select(conn, "SELECT * FROM nonexistent_table")
       assert {:error, _reason} = result
     end
   end
 
   describe "Complete insert/query cycle" do
-    test "can insert and query back all types", %{conn: conn} do
+    test "can insert and query back all types", %{conn: conn, table: table} do
       # Create table
       Connection.execute(conn, """
-      CREATE TABLE chex_test_phase4 (
+      CREATE TABLE #{table} (
         id UInt64,
         value Int64,
         name String,
@@ -332,11 +327,11 @@ defmodule Chex.Phase4SelectTest do
         created_at: [~U[2024-10-29 10:00:00Z], ~U[2024-10-29 11:00:00Z]]
       }
 
-      assert :ok = Chex.insert(conn, "chex_test_phase4", columns, schema)
+      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
 
       # Query back
       assert {:ok, select_rows} =
-               Connection.select(conn, "SELECT * FROM chex_test_phase4 ORDER BY id")
+               Connection.select(conn, "SELECT * FROM #{table} ORDER BY id")
 
       assert length(select_rows) == 2
 

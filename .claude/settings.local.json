@@ -19,7 +19,10 @@
       "Bash(iex -S mix:*)",
       "Bash(mix run:*)",
       "Bash(clickhouse-client:*)",
-      "Bash(clickhouse client:*)"
+      "Bash(clickhouse client:*)",
+      "Bash(for f in test/phase*.exs test/minimal*.exs)",
+      "Bash(done)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,28 +1,18 @@
-defmodule Chex.Phase1FoundationTest do
-  use ExUnit.Case, async: false
-
-  @moduletag :phase1
+defmodule Chex.ConnectionTest do
+  use ExUnit.Case, async: true
 
   setup do
-    # Clean up any leftover test tables before starting
-    {:ok, cleanup_conn} = Chex.Connection.start_link(host: "localhost", port: 9000)
+    # Generate unique table name for this test
+    table = "test_#{System.unique_integer([:positive, :monotonic])}_#{:rand.uniform(999_999)}"
 
-    try do
-      Chex.Connection.execute(cleanup_conn, "DROP TABLE IF EXISTS chex_test_phase1")
-    rescue
-      _ -> :ok
-    end
-
-    GenServer.stop(cleanup_conn)
-
-    # Now start the test connection
+    # Start test connection
     {:ok, conn} = Chex.Connection.start_link(host: "localhost", port: 9000)
 
     on_exit(fn ->
       # Clean up test table if it exists
       if Process.alive?(conn) do
         try do
-          Chex.Connection.execute(conn, "DROP TABLE IF EXISTS chex_test_phase1")
+          Chex.Connection.execute(conn, "DROP TABLE IF EXISTS #{table}")
         rescue
           _ -> :ok
         end
@@ -31,7 +21,7 @@ defmodule Chex.Phase1FoundationTest do
       end
     end)
 
-    {:ok, conn: conn}
+    {:ok, conn: conn, table: table}
   end
 
   describe "Connection management" do
@@ -72,9 +62,9 @@ defmodule Chex.Phase1FoundationTest do
   end
 
   describe "DDL operations" do
-    test "can create table", %{conn: conn} do
+    test "can create table", %{conn: conn, table: table} do
       sql = """
-      CREATE TABLE IF NOT EXISTS chex_test_phase1 (
+      CREATE TABLE IF NOT EXISTS #{table} (
         id UInt64,
         name String,
         value Float64
@@ -84,30 +74,30 @@ defmodule Chex.Phase1FoundationTest do
       assert :ok = Chex.Connection.execute(conn, sql)
     end
 
-    test "can drop table", %{conn: conn} do
+    test "can drop table", %{conn: conn, table: table} do
       # Create table first
       Chex.Connection.execute(conn, """
-      CREATE TABLE IF NOT EXISTS chex_test_phase1 (
+      CREATE TABLE IF NOT EXISTS #{table} (
         id UInt64
       ) ENGINE = Memory
       """)
 
       # Drop it
-      assert :ok = Chex.Connection.execute(conn, "DROP TABLE chex_test_phase1")
+      assert :ok = Chex.Connection.execute(conn, "DROP TABLE #{table}")
     end
 
-    test "can create and drop table in sequence", %{conn: conn} do
+    test "can create and drop table in sequence", %{conn: conn, table: table} do
       # Create
       assert :ok =
                Chex.Connection.execute(conn, """
-               CREATE TABLE chex_test_phase1 (
+               CREATE TABLE #{table} (
                  id UInt64,
                  name String
                ) ENGINE = Memory
                """)
 
       # Verify it exists by trying to drop it (won't error if exists)
-      assert :ok = Chex.Connection.execute(conn, "DROP TABLE chex_test_phase1")
+      assert :ok = Chex.Connection.execute(conn, "DROP TABLE #{table}")
     end
 
     test "execute returns error for invalid SQL", %{conn: conn} do
@@ -117,10 +107,10 @@ defmodule Chex.Phase1FoundationTest do
   end
 
   describe "Multiple operations" do
-    test "can execute multiple DDL statements", %{conn: conn} do
+    test "can execute multiple DDL statements", %{conn: conn, table: table} do
       assert :ok =
                Chex.Connection.execute(conn, """
-               CREATE TABLE chex_test_phase1 (
+               CREATE TABLE #{table} (
                  id UInt64,
                  created DateTime
                ) ENGINE = Memory
@@ -130,7 +120,7 @@ defmodule Chex.Phase1FoundationTest do
       assert :ok = Chex.Connection.ping(conn)
 
       # Can drop
-      assert :ok = Chex.Connection.execute(conn, "DROP TABLE chex_test_phase1")
+      assert :ok = Chex.Connection.execute(conn, "DROP TABLE #{table}")
 
       # Can still ping after drop
       assert :ok = Chex.Connection.ping(conn)

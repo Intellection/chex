@@ -66,10 +66,14 @@ defmodule Chex.Conversion do
     row_count = length(Map.fetch!(columns, first_column_name))
 
     # Build rows
-    for row_idx <- 0..(row_count - 1) do
-      for {name, _type} <- schema, into: %{} do
-        column_values = Map.fetch!(columns, name)
-        {name, Enum.at(column_values, row_idx)}
+    if row_count == 0 do
+      []
+    else
+      for row_idx <- 0..(row_count - 1) do
+        for {name, _type} <- schema, into: %{} do
+          column_values = Map.fetch!(columns, name)
+          {name, Enum.at(column_values, row_idx)}
+        end
       end
     end
   end

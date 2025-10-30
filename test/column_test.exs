@@ -1,7 +1,5 @@
-defmodule Chex.Phase2TypeSystemTest do
+defmodule Chex.ColumnTest do
   use ExUnit.Case, async: true
-
-  @moduletag :phase2
 
   alias Chex.Column
 
