@@ -7,6 +7,8 @@
 #include <clickhouse/columns/date.h>
 #include <clickhouse/columns/uuid.h>
 #include <clickhouse/columns/array.h>
+#include <clickhouse/columns/tuple.h>
+#include <clickhouse/columns/map.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -119,6 +121,73 @@ ERL_NIF_TERM column_to_elixir_list(ErlNifEnv *env, ColumnRef col) {
     for (size_t i = 0; i < count; i++) {
       auto nested = array_col->GetAsColumn(i);
       values.push_back(column_to_elixir_list(env, nested));
+    }
+  } else if (auto tuple_col = col->As<ColumnTuple>()) {
+    // Handle tuple columns - return Elixir tuples
+    size_t tuple_size = tuple_col->TupleSize();
+    for (size_t i = 0; i < count; i++) {
+      std::vector<ERL_NIF_TERM> tuple_elements;
+      tuple_elements.reserve(tuple_size);
+
+      // Extract each element from the tuple
+      for (size_t j = 0; j < tuple_size; j++) {
+        auto element_col = tuple_col->At(j);
+        // Get the i-th value from the j-th element column
+        // We need to slice this column to get just one value
+        auto single_value_col = element_col->Slice(i, 1);
+        // Convert to Elixir and extract the first (only) element
+        ERL_NIF_TERM elem_list = column_to_elixir_list(env, single_value_col);
+        // Extract first element from the list
+        ERL_NIF_TERM head, tail;
+        if (enif_get_list_cell(env, elem_list, &head, &tail)) {
+          tuple_elements.push_back(head);
+        } else {
+          // Handle empty case - shouldn't happen but be defensive
+          tuple_elements.push_back(enif_make_atom(env, "error"));
+        }
+      }
+
+      // Create Elixir tuple from elements
+      values.push_back(enif_make_tuple_from_array(env, tuple_elements.data(), tuple_elements.size()));
+    }
+  } else if (auto map_col = col->As<ColumnMap>()) {
+    // Handle map columns - return Elixir maps
+    // Map is stored as Array(Tuple(K, V)) where Tuple is columnar
+    for (size_t i = 0; i < count; i++) {
+      // Get the i-th map's tuples as a ColumnTuple
+      auto kv_tuples = map_col->GetAsColumn(i);
+
+      // This is a ColumnTuple with 2 columns: keys and values
+      if (auto tuple_col = kv_tuples->As<ColumnTuple>()) {
+        size_t map_size = tuple_col->Size();  // Number of key-value pairs
+
+        // Build Elixir map
+        ERL_NIF_TERM elixir_map = enif_make_new_map(env);
+
+        // Get the keys and values columns
+        auto keys_col = tuple_col->At(0);
+        auto values_col = tuple_col->At(1);
+
+        // Convert both columns to Elixir lists
+        ERL_NIF_TERM keys_list = column_to_elixir_list(env, keys_col);
+        ERL_NIF_TERM values_list = column_to_elixir_list(env, values_col);
+
+        // Iterate through both lists simultaneously to build the map
+        for (size_t j = 0; j < map_size; j++) {
+          ERL_NIF_TERM key, key_tail, value, value_tail;
+          if (enif_get_list_cell(env, keys_list, &key, &key_tail) &&
+              enif_get_list_cell(env, values_list, &value, &value_tail)) {
+            enif_make_map_put(env, elixir_map, key, value, &elixir_map);
+            keys_list = key_tail;
+            values_list = value_tail;
+          }
+        }
+
+        values.push_back(elixir_map);
+      } else {
+        // Fallback for unexpected structure
+        values.push_back(enif_make_new_map(env));
+      }
     }
   } else if (auto nullable_col = col->As<ColumnNullable>()) {
     auto nested = nullable_col->Nested();

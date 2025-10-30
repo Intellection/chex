@@ -57,6 +57,14 @@ defmodule Chex.Native do
   def column_array_append_from_column(_array_col, _nested_col, _offsets),
     do: :erlang.nif_error(:nif_not_loaded)
 
+  # Tuple column NIF
+  def column_tuple_append_from_columns(_tuple_col, _nested_cols),
+    do: :erlang.nif_error(:nif_not_loaded)
+
+  # Map column NIF
+  def column_map_append_from_array(_map_col, _array_tuple_col),
+    do: :erlang.nif_error(:nif_not_loaded)
+
   # Nullable type NIFs
   def column_nullable_uint64_append_bulk(_col, _values, _nulls),
     do: :erlang.nif_error(:nif_not_loaded)

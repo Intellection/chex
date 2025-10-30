@@ -131,18 +131,33 @@ Native.column_array_append_from_column(outer_ref, nested_col.ref, [2])
 - `Array(Array(Array(T)))` - Triple nesting! Works via recursion
 - `Array(Array(Nullable(T)))` - Complex nesting works!
 
+### Complex Composite Types (Implemented!)
+
+✅ **Tuple(T1, T2, ...)** - Fixed-size heterogeneous arrays
+- Columnar API: `Column.append_tuple_columns(col, [col1_values, col2_values, ...])`
+- Performance: Leverages bulk NIFs for each element type
+- SELECT: Returns proper Elixir tuples
+- Example: `Tuple(String, UInt64, Date)` → `{"Alice", 100, ~D[2024-01-01]}`
+
+✅ **Map(K, V)** - Key-value pairs
+- Stored as `Array(Tuple(K, V))` internally
+- Columnar API: `Column.append_map_arrays(col, keys_arrays, values_arrays)`
+- Performance: Built on tuple + array infrastructure
+- SELECT: Returns proper Elixir maps
+- Example: `Map(String, UInt64)` → `%{"k1" => 1, "k2" => 2}`
+
+✅ **Array(Tuple(...))** - Nested structures work automatically!
+✅ **Array(Map(...))** - Nested structures work automatically!
+
 ### Not Yet Implemented (Future)
 
 These require additional wrapper implementations:
 
 ❌ `LowCardinality(T)` - Dictionary encoding wrapper
-❌ `Tuple(T1, T2, ...)` - Fixed-size heterogeneous arrays
-❌ `Map(K, V)` - Key-value pairs
 ❌ `Enum(...)` - Named integer values
 
 But once implemented, they'll automatically work in arrays:
 - `Array(LowCardinality(String))` ← Would work via generic path
-- `Array(Tuple(String, UInt64))` ← Would work via generic path
 
 ## Performance Characteristics
 
@@ -305,6 +320,27 @@ Column.append_bulk(col, [
   ["550e8400-e29b-41d4-a716-446655440000", "6ba7b810-9dad-11d1-80b4-00c04fd430c8"],
   []
 ])
+```
+
+### Tuple and Map Examples
+
+```elixir
+# Tuple(String, UInt64, Date) - use columnar API for best performance
+col = Column.new({:tuple, [:string, :uint64, :date]})
+names = ["Alice", "Bob", "Charlie"]
+scores = [100, 200, 300]
+dates = [~D[2024-01-01], ~D[2024-01-02], ~D[2024-01-03]]
+Column.append_tuple_columns(col, [names, scores, dates])
+
+# Map(String, UInt64) - use columnar API for best performance
+col = Column.new({:map, :string, :uint64})
+keys_arrays = [["k1", "k2"], ["k3"], ["k4", "k5", "k6"]]
+values_arrays = [[1, 2], [3], [4, 5, 6]]
+Column.append_map_arrays(col, keys_arrays, values_arrays)
+
+# Array(Tuple(...)) - nested structures work!
+col = Column.new({:array, {:tuple, [:string, :uint64]}})
+# ... complex nesting supported
 ```
 
 ## Summary

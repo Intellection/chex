@@ -917,4 +917,134 @@ defmodule Chex.ColumnTest do
       end
     end
   end
+
+  describe "Tuple column operations - Columnar API" do
+    test "creates Tuple(String, UInt64) column" do
+      col = Column.new({:tuple, [:string, :uint64]})
+      assert col.type == {:tuple, [:string, :uint64]}
+      assert col.clickhouse_type == "Tuple(String, UInt64)"
+      assert Column.size(col) == 0
+    end
+
+    test "appends Tuple(String, UInt64) values using columnar API" do
+      col = Column.new({:tuple, [:string, :uint64]})
+
+      names = ["Alice", "Bob", "Charlie"]
+      scores = [100, 200, 300]
+
+      Column.append_tuple_columns(col, [names, scores])
+      assert Column.size(col) == 3
+    end
+
+    test "appends Tuple(String, UInt64, Date) values using columnar API" do
+      col = Column.new({:tuple, [:string, :uint64, :date]})
+
+      names = ["Alice", "Bob"]
+      scores = [100, 200]
+      dates = [~D[2024-01-01], ~D[2024-01-02]]
+
+      Column.append_tuple_columns(col, [names, scores, dates])
+      assert Column.size(col) == 2
+    end
+
+    test "appends Tuple(Float64, String, Bool) values" do
+      col = Column.new({:tuple, [:float64, :string, :bool]})
+
+      prices = [99.99, 149.50, 19.99]
+      names = ["Widget", "Gadget", "Doohickey"]
+      in_stock = [true, false, true]
+
+      Column.append_tuple_columns(col, [prices, names, in_stock])
+      assert Column.size(col) == 3
+    end
+
+    test "handles empty tuple columns" do
+      col = Column.new({:tuple, [:string, :uint64]})
+      Column.append_tuple_columns(col, [[], []])
+      assert Column.size(col) == 0
+    end
+
+    test "raises on column count mismatch" do
+      col = Column.new({:tuple, [:string, :uint64]})
+
+      assert_raise ArgumentError, ~r/Column count mismatch/, fn ->
+        Column.append_tuple_columns(col, [["Alice"]])
+      end
+    end
+
+    test "raises on column length mismatch" do
+      col = Column.new({:tuple, [:string, :uint64]})
+
+      assert_raise ArgumentError, ~r/same length/, fn ->
+        Column.append_tuple_columns(col, [["Alice", "Bob"], [100]])
+      end
+    end
+
+    test "raises when used with non-tuple column" do
+      col = Column.new(:uint64)
+
+      assert_raise ArgumentError, ~r/only works with tuple columns/, fn ->
+        Column.append_tuple_columns(col, [[1], [2]])
+      end
+    end
+  end
+
+  describe "Map column operations - Columnar API" do
+    test "creates Map(String, UInt64) column" do
+      col = Column.new({:map, :string, :uint64})
+      assert col.type == {:map, :string, :uint64}
+      assert col.clickhouse_type == "Map(String, UInt64)"
+      assert Column.size(col) == 0
+    end
+
+    test "appends Map(String, UInt64) values using columnar API" do
+      col = Column.new({:map, :string, :uint64})
+
+      keys_arrays = [["k1", "k2"], ["k3"], ["k4", "k5", "k6"]]
+      values_arrays = [[1, 2], [3], [4, 5, 6]]
+
+      Column.append_map_arrays(col, keys_arrays, values_arrays)
+      assert Column.size(col) == 3
+    end
+
+    test "appends Map(String, Float64) values" do
+      col = Column.new({:map, :string, :float64})
+
+      keys_arrays = [["price", "discount"], ["tax"]]
+      values_arrays = [[99.99, 10.0], [5.5]]
+
+      Column.append_map_arrays(col, keys_arrays, values_arrays)
+      assert Column.size(col) == 2
+    end
+
+    test "handles empty maps" do
+      col = Column.new({:map, :string, :uint64})
+      Column.append_map_arrays(col, [[], []], [[], []])
+      assert Column.size(col) == 2
+    end
+
+    test "raises on keys/values array length mismatch" do
+      col = Column.new({:map, :string, :uint64})
+
+      assert_raise ArgumentError, ~r/must have the same length/, fn ->
+        Column.append_map_arrays(col, [["k1"]], [[1], [2]])
+      end
+    end
+
+    test "raises on keys/values pair length mismatch" do
+      col = Column.new({:map, :string, :uint64})
+
+      assert_raise ArgumentError, ~r/must match its values array length/, fn ->
+        Column.append_map_arrays(col, [["k1", "k2"]], [[1]])
+      end
+    end
+
+    test "raises when used with non-map column" do
+      col = Column.new(:uint64)
+
+      assert_raise ArgumentError, ~r/only works with map columns/, fn ->
+        Column.append_map_arrays(col, [[]], [[]])
+      end
+    end
+  end
 end

@@ -8,6 +8,8 @@
 #include <clickhouse/columns/decimal.h>
 #include <clickhouse/columns/nullable.h>
 #include <clickhouse/columns/array.h>
+#include <clickhouse/columns/tuple.h>
+#include <clickhouse/columns/map.h>
 #include <string>
 #include <memory>
 #include <stdexcept>
@@ -562,3 +564,100 @@ fine::Atom column_array_append_from_column(
   }
 }
 FINE_NIF(column_array_append_from_column, 0);
+
+// ============================================================================
+// Tuple Type Support - Columnar API
+// ============================================================================
+
+// Append pre-built nested columns to tuple
+// Columnar API: accepts pre-separated columns for maximum performance
+// Works for ANY combination of column types
+fine::Atom column_tuple_append_from_columns(
+    ErlNifEnv *env,
+    fine::ResourcePtr<ColumnResource> tuple_col_res,
+    std::vector<fine::ResourcePtr<ColumnResource>> nested_col_resources) {
+  try {
+    if (!tuple_col_res->ptr) {
+      throw std::runtime_error("Tuple column pointer is null");
+    }
+
+    auto tuple_col = std::static_pointer_cast<ColumnTuple>(tuple_col_res->ptr);
+    if (!tuple_col) {
+      throw std::runtime_error("Failed to cast to ColumnTuple");
+    }
+
+    // Check that the number of columns matches
+    if (nested_col_resources.size() != tuple_col->TupleSize()) {
+      throw std::runtime_error("Column count mismatch: expected " +
+                               std::to_string(tuple_col->TupleSize()) +
+                               ", got " + std::to_string(nested_col_resources.size()));
+    }
+
+    // Validate all columns have the same size
+    if (!nested_col_resources.empty()) {
+      size_t expected_size = nested_col_resources[0]->ptr->Size();
+      for (size_t i = 1; i < nested_col_resources.size(); i++) {
+        if (nested_col_resources[i]->ptr->Size() != expected_size) {
+          throw std::runtime_error("All columns must have the same size");
+        }
+      }
+    }
+
+    // Build vector of column refs
+    std::vector<ColumnRef> columns;
+    columns.reserve(nested_col_resources.size());
+    for (auto& col_res : nested_col_resources) {
+      if (!col_res->ptr) {
+        throw std::runtime_error("Nested column pointer is null");
+      }
+      columns.push_back(col_res->ptr);
+    }
+
+    // Create temporary tuple column and append to main tuple
+    auto temp_tuple = std::make_shared<ColumnTuple>(columns);
+    tuple_col->Append(temp_tuple);
+
+    return fine::Atom("ok");
+  } catch (const std::exception& e) {
+    throw std::runtime_error(std::string("Tuple append failed: ") + e.what());
+  }
+}
+FINE_NIF(column_tuple_append_from_columns, 0);
+
+// ============================================================================
+// Map Type Support - Columnar API
+// ============================================================================
+
+// Append pre-built Array(Tuple(K,V)) column to map
+// Map is just syntax for Array(Tuple(K,V)), so we build the array and append it
+fine::Atom column_map_append_from_array(
+    ErlNifEnv *env,
+    fine::ResourcePtr<ColumnResource> map_col_res,
+    fine::ResourcePtr<ColumnResource> array_tuple_col_res) {
+  try {
+    if (!map_col_res->ptr) {
+      throw std::runtime_error("Map column pointer is null");
+    }
+    if (!array_tuple_col_res->ptr) {
+      throw std::runtime_error("Array column pointer is null");
+    }
+
+    // ColumnMap wraps an Array(Tuple(K,V)) internally
+    // We need to create a temporary ColumnMap from our array and append it
+    auto array_col = std::static_pointer_cast<ColumnArray>(array_tuple_col_res->ptr);
+    if (!array_col) {
+      throw std::runtime_error("Failed to cast to ColumnArray");
+    }
+
+    // Create a ColumnMap from the array
+    auto temp_map = std::make_shared<ColumnMap>(array_tuple_col_res->ptr);
+
+    // Now append the ColumnMap
+    map_col_res->ptr->Append(temp_map);
+
+    return fine::Atom("ok");
+  } catch (const std::exception& e) {
+    throw std::runtime_error(std::string("Map append failed: ") + e.what());
+  }
+}
+FINE_NIF(column_map_append_from_array, 0);

@@ -346,6 +346,145 @@ defmodule Chex.Column do
   end
 
   @doc """
+  Appends tuple values using columnar API (high performance).
+
+  For Tuple columns, accepts pre-separated column data for maximum performance.
+  This is the fastest way to insert tuple data as it avoids transposing rows into columns.
+
+  ## Parameters
+  - `column` - A tuple column created with `new({:tuple, [type1, type2, ...]})`
+  - `column_lists` - A list of lists, one per tuple element, all with the same length
+
+  ## Example
+      # Create Tuple(String, UInt64, Date) column
+      col = Column.new({:tuple, [:string, :uint64, :date]})
+
+      # Fastest: Pre-separated columnar data
+      names = ["Alice", "Bob", "Charlie"]
+      scores = [100, 200, 300]
+      dates = [~D[2024-01-01], ~D[2024-01-02], ~D[2024-01-03]]
+
+      Column.append_tuple_columns(col, [names, scores, dates])
+  """
+  def append_tuple_columns(
+        %__MODULE__{type: {:tuple, element_types}, ref: tuple_ref},
+        column_lists
+      )
+      when is_list(column_lists) do
+    unless length(column_lists) == length(element_types) do
+      raise ArgumentError,
+            "Column count mismatch: expected #{length(element_types)} columns, got #{length(column_lists)}"
+    end
+
+    # Validate all columns have the same length
+    unless Enum.all?(column_lists, &is_list/1) do
+      raise ArgumentError, "All column_lists must be lists"
+    end
+
+    column_lengths = Enum.map(column_lists, &length/1)
+
+    unless Enum.all?(column_lengths, &(&1 == hd(column_lengths))) do
+      raise ArgumentError,
+            "All columns must have the same length, got: #{inspect(column_lengths)}"
+    end
+
+    # Build columns for each tuple element
+    nested_cols =
+      Enum.zip(element_types, column_lists)
+      |> Enum.map(fn {type, values} ->
+        col = new(type)
+        append_bulk(col, values)
+        col
+      end)
+
+    # Pass column refs to NIF
+    Native.column_tuple_append_from_columns(tuple_ref, Enum.map(nested_cols, & &1.ref))
+  end
+
+  def append_tuple_columns(%__MODULE__{type: type}, _) do
+    raise ArgumentError,
+          "append_tuple_columns/2 only works with tuple columns, got: #{inspect(type)}"
+  end
+
+  @doc """
+  Appends map values using columnar API (high performance).
+
+  For Map columns, accepts pre-separated key/value arrays for maximum performance.
+  This is the fastest way to insert map data as it avoids row-by-row processing.
+
+  Maps in ClickHouse are stored as Array(Tuple(K, V)), so this function converts
+  the columnar format into that structure efficiently.
+
+  ## Parameters
+  - `column` - A map column created with `new({:map, key_type, value_type})`
+  - `keys_arrays` - A list of key lists, one per map/row
+  - `values_arrays` - A list of value lists, one per map/row, matching keys_arrays length
+
+  ## Example
+      # Create Map(String, UInt64) column
+      col = Column.new({:map, :string, :uint64})
+
+      # Fastest: Pre-separated key/value arrays
+      keys_arrays = [["k1", "k2"], ["k3"], ["k4", "k5", "k6"]]
+      values_arrays = [[1, 2], [3], [4, 5, 6]]
+
+      Column.append_map_arrays(col, keys_arrays, values_arrays)
+  """
+  def append_map_arrays(
+        %__MODULE__{type: {:map, key_type, value_type}, ref: map_ref},
+        keys_arrays,
+        values_arrays
+      )
+      when is_list(keys_arrays) and is_list(values_arrays) do
+    unless length(keys_arrays) == length(values_arrays) do
+      raise ArgumentError,
+            "Keys and values arrays must have the same length, got: #{length(keys_arrays)} keys vs #{length(values_arrays)} values"
+    end
+
+    # Validate each key array matches its value array in length
+    Enum.zip(keys_arrays, values_arrays)
+    |> Enum.each(fn {keys, values} ->
+      unless length(keys) == length(values) do
+        raise ArgumentError,
+              "Each keys array must match its values array length, got: #{length(keys)} keys vs #{length(values)} values"
+      end
+    end)
+
+    # Build Array(Tuple(K,V)) column
+    tuple_type = {:tuple, [key_type, value_type]}
+    array_tuple_col = new({:array, tuple_type})
+
+    # For each map (row), we need to build the tuples
+    # Flatten all keys and values across all maps
+    all_keys_per_map = keys_arrays
+    all_values_per_map = values_arrays
+
+    # Build nested tuple column with all keys and values
+    all_keys = List.flatten(all_keys_per_map)
+    all_values = List.flatten(all_values_per_map)
+
+    nested_tuple_col = new(tuple_type)
+    append_tuple_columns(nested_tuple_col, [all_keys, all_values])
+
+    # Calculate offsets for the array (cumulative counts of tuples)
+    offsets =
+      Enum.scan(keys_arrays, 0, fn keys, acc ->
+        acc + length(keys)
+      end)
+
+    # Build the Array(Tuple(K,V)) using the array NIF
+    Native.column_array_append_from_column(array_tuple_col.ref, nested_tuple_col.ref, offsets)
+
+    # Now append the Array(Tuple(K,V)) to the Map using the map NIF
+    Native.column_map_append_from_array(map_ref, array_tuple_col.ref)
+  end
+
+  def append_map_arrays(%__MODULE__{type: type}, _, _) do
+    raise ArgumentError,
+          "append_map_arrays/3 only works with map columns, got: #{inspect(type)}"
+  end
+
+  @doc """
   Returns the number of elements in the column.
 
   ## Examples
@@ -387,6 +526,15 @@ defmodule Chex.Column do
 
   defp elixir_type_to_clickhouse({:array, inner_type}) do
     "Array(#{elixir_type_to_clickhouse(inner_type)})"
+  end
+
+  defp elixir_type_to_clickhouse({:tuple, element_types}) when is_list(element_types) do
+    types_str = Enum.map_join(element_types, ", ", &elixir_type_to_clickhouse/1)
+    "Tuple(#{types_str})"
+  end
+
+  defp elixir_type_to_clickhouse({:map, key_type, value_type}) do
+    "Map(#{elixir_type_to_clickhouse(key_type)}, #{elixir_type_to_clickhouse(value_type)})"
   end
 
   defp elixir_type_to_clickhouse(type) do
