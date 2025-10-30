@@ -18,13 +18,13 @@ defmodule Chex do
       # Execute DDL
       :ok = Chex.execute(conn, "CREATE TABLE users (id UInt64, name String) ENGINE = Memory")
 
-      # Insert data
-      rows = [
-        %{id: 1, name: "Alice"},
-        %{id: 2, name: "Bob"}
-      ]
+      # Insert data (columnar format)
+      columns = %{
+        id: [1, 2],
+        name: ["Alice", "Bob"]
+      }
       schema = [id: :uint64, name: :string]
-      :ok = Chex.insert(conn, "users", rows, schema)
+      :ok = Chex.insert(conn, "users", columns, schema)
 
       # Query data
       {:ok, rows} = Chex.query(conn, "SELECT * FROM users ORDER BY id")

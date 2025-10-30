@@ -1147,13 +1147,14 @@ defmodule Chex.IntegrationTest do
     """)
 
     # Insert data
-    rows = [
-      %{id: 1, name: "Alice", amount: 100.5},
-      %{id: 2, name: "Bob", amount: 200.75}
-    ]
+    columns = %{
+      id: [1, 2],
+      name: ["Alice", "Bob"],
+      amount: [100.5, 200.75]
+    }
 
     schema = [id: :uint64, name: :string, amount: :float64]
-    :ok = Chex.insert(conn, "test", rows, schema)
+    :ok = Chex.insert(conn, "test", columns, schema)
 
     # Query back
     {:ok, results} = Chex.query(conn, "SELECT * FROM test ORDER BY id")
