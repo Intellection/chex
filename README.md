@@ -2,7 +2,7 @@
 
 ⚡ **High-performance native ClickHouse client for Elixir**
 
-Chex provides blazing-fast access to ClickHouse using the native TCP protocol (port 9000) via C++ NIFs, delivering up to **51% faster inserts** and **53% less bandwidth** compared to HTTP-based clients.
+Chex provides fast access to ClickHouse using the native TCP protocol (port 9000) via C++ NIFs. Native protocol benefits include binary columnar format, efficient compression, and reduced overhead compared to HTTP-based clients.
 
 ## Why Chex?
 
@@ -430,7 +430,7 @@ Chex uses a three-layer architecture:
 
 ### Why FINE + clickhouse-cpp?
 
-- **Native Protocol** - 51% faster inserts than HTTP
+- **Native Protocol** - Binary columnar format with efficient compression
 - **Mature Library** - Leverage official ClickHouse C++ client
 - **Type Safety** - FINE provides crash-proof NIFs
 - **Fast Development** - 4-6 weeks vs 4-6 months for pure Elixir
@@ -496,18 +496,6 @@ mix test test/nesting_integration_test.exs
 ### Not Planned
 - ❌ Ecto integration (ClickHouse is OLAP, not OLTP - not a good fit)
 - ❌ HTTP protocol support (use native TCP for better performance)
-
-## Benchmarks
-
-Initial benchmarks vs HTTP-based clients (Pillar):
-
-| Operation | Chex (Native) | Pillar (HTTP) | Improvement |
-|-----------|---------------|---------------|-------------|
-| INSERT (100k rows) | ~2.0s | ~4.2s | **51% faster** |
-| SELECT (100k rows) | ~0.8s | ~1.2s | **33% faster** |
-| Wire size | 12 MB | 25 MB | **53% less** |
-
-*Benchmarks from FINE_PLAN.md Phase 1 analysis. Your mileage may vary.*
 
 ## Contributing
 
