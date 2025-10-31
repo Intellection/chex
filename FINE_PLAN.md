@@ -1563,25 +1563,38 @@ With MVP achieved (Phases 1-4 complete) and all advanced types complete (Phase 5
    - ✅ 227 tests passing total
    - ✅ Production-ready support for arbitrarily complex nested types
 
-4. **Phase 6: Explorer DataFrame Integration** (FUTURE)
+4. **✅ Phase 5F: SELECT API Redesign & Columnar Results** (COMPLETED)
+   - ✅ Implemented `client_select_cols` in C++ (lines 567-824 in select.cpp)
+   - ✅ Returns columnar format: `%{column_name => [values]}`
+   - ✅ Added `select_cols/2` to Elixir Connection API
+   - ✅ Renamed `select/2` to `select_rows/2` with backward compatibility
+   - ✅ Updated benchmarks to compare row-major vs columnar performance
+   - ✅ Updated README with comprehensive API documentation
+   - ✅ All 309 tests passing
+   - **Performance characteristics:**
+     - Columnar format ideal for large result sets and analytics
+     - Row-major format maintained for traditional use cases
+     - Backward compatible via deprecated `select/2` wrapper
+
+5. **Phase 6: Explorer DataFrame Integration** (FUTURE)
    - Direct DataFrame insert support
    - Zero-copy optimizations with Arrow
    - Schema inference from DataFrame types
    - Natural analytics workflow integration
 
-5. **Phase 7: Production Polish** (NEXT PRIORITY)
+6. **Phase 7: Production Polish** (NEXT PRIORITY)
    - Comprehensive error handling
    - Memory leak testing
    - SSL/TLS support
    - Timeouts and retry logic
    - Documentation and CI/CD
 
-6. **Phase 8: Advanced Query Features** (NICE TO HAVE)
+7. **Phase 8: Advanced Query Features** (NICE TO HAVE)
    - Streaming SELECT for large result sets
    - Batch operations
    - Async query support
 
-7. **NOT IMPLEMENTING:**
+8. **NOT IMPLEMENTING:**
    - ❌ Ecto Integration (not a good fit for OLAP database)
    - ❌ Distributed Queries (removed)
 

@@ -95,29 +95,37 @@ IO.inspect(results)
 
 ## Benchmarks
 
-Real-world performance comparison vs Pillar (HTTP-based client) on M3 Pro, tested with 7-column schema:
+Real-world performance comparison vs Pillar (HTTP-based client) on M3 Pro, tested with 7-column schema.
+
+**Important:** Benchmarks use `Pillar.select/2` which parses JSON responses. Using `Pillar.query/2` (which returns unparsed TSV strings) is not a fair comparison.
 
 ### INSERT Performance
 
-| Rows | Chex | Pillar | Advantage |
-|------|------|--------|-----------|
-| 10k | 15 ms | 58 ms | **3.8x faster** |
-| 100k | 181 ms | 587 ms | **3.2x faster** |
-| 1M | 2034 ms | 5113 ms | **2.5x faster** |
+| Rows | Chex | Pillar | Speedup | Memory (Chex) | Memory (Pillar) |
+|------|------|--------|---------|---------------|-----------------|
+| 10k | 13.5 ms | 63.9 ms | **4.7x faster** | 976 B | 45 MB |
+| 100k | 184 ms | 626 ms | **3.4x faster** | 976 B | 452 MB |
+| 1M | 2,094 ms | 5,545 ms | **2.6x faster** | 976 B | 4.5 GB |
 
-**Memory usage:** Chex uses constant 976 B regardless of data size, while Pillar uses ~45 MB per 10k rows.
+**Chex uses ~4.6 million times less memory** than Pillar for inserts due to columnar format.
 
 ### SELECT Performance
 
-| Query Type | Chex | Pillar | Notes |
-|------------|------|--------|-------|
-| Aggregation | 3.8 ms | 4.6 ms | Chex 1.2x faster |
-| Filtered (10k rows) | 12.6 ms | 9.9 ms | Pillar 1.3x faster |
-| Full scan (1M rows) | 811 ms | 64.4 ms | Pillar 12.6x faster |
+| Query Type | Chex | Pillar | Speedup | Memory (Chex) | Memory (Pillar) |
+|------------|------|--------|---------|---------------|-----------------|
+| Aggregation | 3.6 ms | 4.9 ms | **1.4x faster** | 544 B | 17 KB |
+| Filtered (10k rows) | 12 ms | 53 ms | **4.4x faster** | 128 B | 30 MB |
+| Full scan (1M rows) | 802 ms | 4,980 ms | **6.2x faster** | 128 B | 3 GB |
 
-**Takeaway:** Chex excels at bulk inserts with minimal memory overhead and competitive SELECT performance for aggregations. For large result sets, HTTP clients are faster due to JSON parsing optimizations.
+**Chex uses ~5.5 million times less memory** than Pillar for large SELECT queries due to streaming columnar format vs materialized row-oriented maps.
 
-See `bench/README.md` for details on running benchmarks yourself.
+### Key Takeaways
+
+- **Native protocol is faster** - Chex's native TCP protocol with binary columnar format outperforms HTTP+JSON
+- **Massive memory efficiency** - Millions of times less memory usage due to streaming and columnar format
+- **Scales better** - Performance advantage increases with data size (6.2x for 1M rows vs 1.4x for aggregations)
+
+See `bench/README.md` and `BINARY_PASSTHROUGH.md` for detailed analysis and methodology.
 
 ## Core Concepts
 
@@ -298,15 +306,22 @@ ORDER BY id
 ```
 
 #### SELECT Queries
+
+Chex provides two query formats to suit different use cases:
+
+##### Row-Major Format (Traditional)
+Returns results as a list of maps, where each map represents a row:
+
 ```elixir
 # Simple query
-{:ok, rows} = Chex.Connection.select(conn, "SELECT * FROM users")
+{:ok, rows} = Chex.Connection.select_rows(conn, "SELECT * FROM users")
+# => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
 
 # With WHERE clause
-{:ok, rows} = Chex.Connection.select(conn, "SELECT * FROM users WHERE id > 100")
+{:ok, rows} = Chex.Connection.select_rows(conn, "SELECT * FROM users WHERE id > 100")
 
 # Aggregations
-{:ok, [result]} = Chex.Connection.select(conn, """
+{:ok, [result]} = Chex.Connection.select_rows(conn, """
   SELECT
     event_type,
     count() as count,
@@ -316,6 +331,25 @@ ORDER BY id
   ORDER BY count DESC
 """)
 ```
+
+##### Columnar Format (Efficient for Analytics)
+Returns results as a map of column lists, ideal for large result sets and data analysis:
+
+```elixir
+# Query returns columnar format
+{:ok, cols} = Chex.Connection.select_cols(conn, "SELECT * FROM users")
+# => {:ok, %{id: [1, 2, 3], name: ["Alice", "Bob", "Charlie"]}}
+
+# Perfect for analytics workflows
+{:ok, data} = Chex.Connection.select_cols(conn, "SELECT user_id, value FROM events")
+# => {:ok, %{user_id: [1, 2, 1, 3], value: [10.5, 20.0, 15.5, 30.0]}}
+
+# Easy integration with data processing libraries
+%{user_id: user_ids, value: values} = data
+total = Enum.sum(values)
+```
+
+**Note:** The deprecated `select/2` function still works and delegates to `select_rows/2` for backward compatibility.
 
 ### Inserting Data
 

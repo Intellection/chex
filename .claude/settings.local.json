@@ -23,7 +23,12 @@
       "Bash(for f in test/phase*.exs test/minimal*.exs)",
       "Bash(done)",
       "Bash(cat:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(timeout 180 mix run:*)",
+      "Bash(tee:*)",
+      "WebFetch(domain:www.erlang.org)",
+      "Bash(timeout 240 mix run:*)",
+      "Bash(timeout 120 mix run:*)"
     ],
     "deny": [],
     "ask": []

@@ -115,35 +115,36 @@ defmodule ChexVsPillarBench do
     Benchee.run(
       %{
         "Chex SELECT all 1M rows" => fn ->
-          {:ok, _rows} = Chex.Connection.select(chex_conn, "SELECT * FROM #{chex_select_table}")
+          {:ok, _cols} =
+            Chex.Connection.select_cols(chex_conn, "SELECT * FROM #{chex_select_table}")
         end,
         "Pillar SELECT all 1M rows" => fn ->
-          {:ok, _rows} = Pillar.query(pillar_conn, "SELECT * FROM #{pillar_select_table}")
+          {:ok, _rows} = Pillar.select(pillar_conn, "SELECT * FROM #{pillar_select_table}")
         end,
         "Chex SELECT filtered (10k rows)" => fn ->
-          {:ok, _rows} =
-            Chex.Connection.select(
+          {:ok, _cols} =
+            Chex.Connection.select_cols(
               chex_conn,
               "SELECT * FROM #{chex_select_table} WHERE user_id < 1000"
             )
         end,
         "Pillar SELECT filtered (10k rows)" => fn ->
           {:ok, _rows} =
-            Pillar.query(
+            Pillar.select(
               pillar_conn,
               "SELECT * FROM #{pillar_select_table} WHERE user_id < 1000"
             )
         end,
         "Chex SELECT aggregation" => fn ->
-          {:ok, _rows} =
-            Chex.Connection.select(
+          {:ok, _cols} =
+            Chex.Connection.select_cols(
               chex_conn,
               "SELECT event_type, count(*) as cnt FROM #{chex_select_table} GROUP BY event_type"
             )
         end,
         "Pillar SELECT aggregation" => fn ->
           {:ok, _rows} =
-            Pillar.query(
+            Pillar.select(
               pillar_conn,
               "SELECT event_type, count(*) as cnt FROM #{pillar_select_table} GROUP BY event_type"
             )

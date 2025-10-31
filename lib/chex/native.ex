@@ -91,4 +91,5 @@ defmodule Chex.Native do
 
   # Phase 4 - SELECT NIFs
   def client_select(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
+  def client_select_cols(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
 end

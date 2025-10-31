@@ -91,19 +91,36 @@ defmodule ChexOnlyBench do
 
     Benchee.run(
       %{
-        "Chex SELECT all 1M rows" => fn ->
-          {:ok, _rows} = Chex.Connection.select(chex_conn, "SELECT * FROM #{select_table}")
+        "Chex SELECT all 1M rows (row-major)" => fn ->
+          {:ok, _rows} = Chex.Connection.select_rows(chex_conn, "SELECT * FROM #{select_table}")
         end,
-        "Chex SELECT filtered (10k rows)" => fn ->
+        "Chex SELECT all 1M rows (columnar)" => fn ->
+          {:ok, _cols} = Chex.Connection.select_cols(chex_conn, "SELECT * FROM #{select_table}")
+        end,
+        "Chex SELECT filtered 10k rows (row-major)" => fn ->
           {:ok, _rows} =
-            Chex.Connection.select(
+            Chex.Connection.select_rows(
               chex_conn,
               "SELECT * FROM #{select_table} WHERE user_id < 1000"
             )
         end,
-        "Chex SELECT aggregation" => fn ->
+        "Chex SELECT filtered 10k rows (columnar)" => fn ->
+          {:ok, _cols} =
+            Chex.Connection.select_cols(
+              chex_conn,
+              "SELECT * FROM #{select_table} WHERE user_id < 1000"
+            )
+        end,
+        "Chex SELECT aggregation (row-major)" => fn ->
           {:ok, _rows} =
-            Chex.Connection.select(
+            Chex.Connection.select_rows(
+              chex_conn,
+              "SELECT event_type, count(*) as cnt FROM #{select_table} GROUP BY event_type"
+            )
+        end,
+        "Chex SELECT aggregation (columnar)" => fn ->
+          {:ok, _cols} =
+            Chex.Connection.select_cols(
               chex_conn,
               "SELECT event_type, count(*) as cnt FROM #{select_table} GROUP BY event_type"
             )

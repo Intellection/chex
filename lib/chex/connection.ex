@@ -76,7 +76,44 @@ defmodule Chex.Connection do
   end
 
   @doc """
-  Executes a SELECT query and returns results as a list of maps.
+  Executes a SELECT query and returns results in row-major format (list of maps).
+
+  Each row is represented as a map with column names as keys.
+
+  ## Examples
+
+      {:ok, rows} = Chex.Connection.select_rows(conn, "SELECT id, name FROM users")
+      # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
+
+  """
+  @spec select_rows(GenServer.server(), String.t()) :: {:ok, [map()]} | {:error, term()}
+  def select_rows(conn, query) do
+    GenServer.call(conn, {:select_rows, query}, :infinity)
+  end
+
+  @doc """
+  Executes a SELECT query and returns results in columnar format (map of lists).
+
+  Each column is represented as a list of values, with column names as map keys.
+  This format is more efficient for large result sets and enables easier integration
+  with data analysis tools.
+
+  ## Examples
+
+      {:ok, cols} = Chex.Connection.select_cols(conn, "SELECT id, name FROM users")
+      # => {:ok, %{id: [1, 2], name: ["Alice", "Bob"]}}
+
+  """
+  @spec select_cols(GenServer.server(), String.t()) :: {:ok, map()} | {:error, term()}
+  def select_cols(conn, query) do
+    GenServer.call(conn, {:select_cols, query}, :infinity)
+  end
+
+  @doc """
+  Executes a SELECT query and returns results as a list of maps (deprecated).
+
+  This function is deprecated. Use `select_rows/2` for row-major format or
+  `select_cols/2` for columnar format.
 
   ## Examples
 
@@ -86,7 +123,7 @@ defmodule Chex.Connection do
   """
   @spec select(GenServer.server(), String.t()) :: {:ok, [map()]} | {:error, term()}
   def select(conn, query) do
-    GenServer.call(conn, {:select, query}, :infinity)
+    select_rows(conn, query)
   end
 
   # GenServer callbacks
@@ -153,12 +190,24 @@ defmodule Chex.Connection do
   end
 
   @impl true
-  def handle_call({:select, query}, _from, state) do
+  def handle_call({:select_rows, query}, _from, state) do
     try do
       # client_select returns list of maps directly
       rows = Native.client_select(state.client, query)
 
       {:reply, {:ok, rows}, state}
+    rescue
+      e -> {:reply, {:error, Exception.message(e)}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:select_cols, query}, _from, state) do
+    try do
+      # client_select_cols returns map of column lists
+      cols = Native.client_select_cols(state.client, query)
+
+      {:reply, {:ok, cols}, state}
     rescue
       e -> {:reply, {:error, Exception.message(e)}, state}
     end
