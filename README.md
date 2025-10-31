@@ -93,6 +93,32 @@ IO.inspect(results)
 #    ]
 ```
 
+## Benchmarks
+
+Real-world performance comparison vs Pillar (HTTP-based client) on M3 Pro, tested with 7-column schema:
+
+### INSERT Performance
+
+| Rows | Chex | Pillar | Advantage |
+|------|------|--------|-----------|
+| 10k | 15 ms | 58 ms | **3.8x faster** |
+| 100k | 181 ms | 587 ms | **3.2x faster** |
+| 1M | 2034 ms | 5113 ms | **2.5x faster** |
+
+**Memory usage:** Chex uses constant 976 B regardless of data size, while Pillar uses ~45 MB per 10k rows.
+
+### SELECT Performance
+
+| Query Type | Chex | Pillar | Notes |
+|------------|------|--------|-------|
+| Aggregation | 3.8 ms | 4.6 ms | Chex 1.2x faster |
+| Filtered (10k rows) | 12.6 ms | 9.9 ms | Pillar 1.3x faster |
+| Full scan (1M rows) | 811 ms | 64.4 ms | Pillar 12.6x faster |
+
+**Takeaway:** Chex excels at bulk inserts with minimal memory overhead and competitive SELECT performance for aggregations. For large result sets, HTTP clients are faster due to JSON parsing optimizations.
+
+See `bench/README.md` for details on running benchmarks yourself.
+
 ## Core Concepts
 
 ### Columnar Format (Recommended)

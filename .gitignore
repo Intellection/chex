@@ -29,3 +29,7 @@ chex-*.tar
 
 # Target directory (Rust artifacts if any)
 /target/
+
+# Benchmark results
+/bench/results*.html
+/bench/*.txt

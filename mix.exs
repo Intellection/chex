@@ -47,7 +47,10 @@ defmodule Chex.MixProject do
       {:elixir_make, "~> 0.6", runtime: false},
       {:jason, "~> 1.4"},
       {:decimal, "~> 2.0"},
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
+      {:benchee, "~> 1.3", only: :dev},
+      {:benchee_html, "~> 1.0", only: :dev},
+      {:pillar, "~> 0.31", only: :dev}
     ]
   end
 end

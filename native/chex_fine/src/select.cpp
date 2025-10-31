@@ -258,13 +258,13 @@ ERL_NIF_TERM column_to_elixir_list(ErlNifEnv *env, ColumnRef col) {
   return enif_make_list_from_array(env, values.data(), values.size());
 }
 
-// Helper to convert Block to list of maps
-ERL_NIF_TERM block_to_maps_impl(ErlNifEnv *env, std::shared_ptr<Block> block) {
+// Helper to convert Block to maps and append to output vector
+void block_to_maps_impl(ErlNifEnv *env, std::shared_ptr<Block> block, std::vector<ERL_NIF_TERM>& out_maps) {
   size_t col_count = block->GetColumnCount();
   size_t row_count = block->GetRowCount();
 
   if (row_count == 0) {
-    return enif_make_list(env, 0);
+    return;  // Nothing to add
   }
 
   // Extract column names and data
@@ -486,23 +486,32 @@ ERL_NIF_TERM block_to_maps_impl(ErlNifEnv *env, std::shared_ptr<Block> block) {
     col_data.push_back(column_values);
   }
 
-  // Build list of maps
+  // Pre-create column name atoms once (major optimization)
+  std::vector<ERL_NIF_TERM> key_atoms;
+  key_atoms.reserve(col_count);
+  for (size_t c = 0; c < col_count; c++) {
+    key_atoms.push_back(enif_make_atom(env, col_names[c].c_str()));
+  }
+
+  // Build maps in local vector first for better cache locality
   std::vector<ERL_NIF_TERM> rows;
+  rows.reserve(row_count);
+
+  // Build maps row by row, reusing the pre-created key atoms
   for (size_t r = 0; r < row_count; r++) {
-    ERL_NIF_TERM keys[col_count];
     ERL_NIF_TERM values[col_count];
 
     for (size_t c = 0; c < col_count; c++) {
-      keys[c] = enif_make_atom(env, col_names[c].c_str());
       values[c] = col_data[c][r];
     }
 
     ERL_NIF_TERM map;
-    enif_make_map_from_arrays(env, keys, values, col_count, &map);
+    enif_make_map_from_arrays(env, key_atoms.data(), values, col_count, &map);
     rows.push_back(map);
   }
 
-  return enif_make_list_from_array(env, rows.data(), rows.size());
+  // Append all rows at once to output vector
+  out_maps.insert(out_maps.end(), rows.begin(), rows.end());
 }
 
 // Wrapper struct to return list of maps from FINE NIF
@@ -540,18 +549,9 @@ SelectResult client_select(
   std::vector<ERL_NIF_TERM> all_maps;
 
   client->Select(query, [&](const Block &block) {
-    // Convert this block to maps immediately while data is valid
+    // Convert this block to maps and append directly to all_maps
     auto block_ptr = std::make_shared<Block>(block);
-    ERL_NIF_TERM maps_from_block = block_to_maps_impl(env, block_ptr);
-
-    // Unpack the list and add to our collection
-    unsigned int list_length;
-    if (enif_get_list_length(env, maps_from_block, &list_length)) {
-      ERL_NIF_TERM head, tail = maps_from_block;
-      while (enif_get_list_cell(env, tail, &head, &tail)) {
-        all_maps.push_back(head);
-      }
-    }
+    block_to_maps_impl(env, block_ptr, all_maps);
   });
 
   // Build final list from all maps
