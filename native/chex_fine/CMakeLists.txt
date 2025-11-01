@@ -19,8 +19,23 @@ endif()
 
 set(ERLANG_INCLUDE_DIR "${ERLANG_ROOT_DIR}/usr/include")
 
-# Add clickhouse-cpp from external directory
-set(CLICKHOUSE_CPP_DIR "/Users/brendon/work/clickhouse-cpp")
+# Find clickhouse-cpp library
+# Try in order of preference:
+# 1. Environment variable CLICKHOUSE_CPP_DIR (for custom builds/CI)
+# 2. Git submodule at ../clickhouse-cpp (standard location)
+
+if(DEFINED ENV{CLICKHOUSE_CPP_DIR})
+  set(CLICKHOUSE_CPP_DIR $ENV{CLICKHOUSE_CPP_DIR})
+  message(STATUS "Using clickhouse-cpp from environment: ${CLICKHOUSE_CPP_DIR}")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../clickhouse-cpp/CMakeLists.txt")
+  set(CLICKHOUSE_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../clickhouse-cpp")
+  message(STATUS "Using clickhouse-cpp from submodule: ${CLICKHOUSE_CPP_DIR}")
+else()
+  message(FATAL_ERROR
+    "clickhouse-cpp not found! Please either:\n"
+    "  1. Initialize git submodules: git submodule update --init --recursive\n"
+    "  2. Set CLICKHOUSE_CPP_DIR environment variable")
+endif()
 
 # Enable SSL support in clickhouse-cpp
 set(WITH_OPENSSL ON CACHE BOOL "Enable OpenSSL support" FORCE)

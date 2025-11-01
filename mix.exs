@@ -21,7 +21,12 @@ defmodule Chex.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/your-username/chex"}
+      links: %{
+        "GitHub" => "https://github.com/Intellection/chex",
+        "Changelog" => "https://github.com/Intellection/chex/blob/main/CHANGELOG.md"
+      },
+      files:
+        ~w(lib priv native .formatter.exs mix.exs README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md)
     ]
   end
 

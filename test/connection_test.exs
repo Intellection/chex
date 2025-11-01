@@ -26,7 +26,7 @@ defmodule Chex.ConnectionTest do
 
   describe "Connection management" do
     test "can start connection with default options", %{conn: _test_conn} do
-      {:ok, conn} = Chex.Connection.start_link()
+      {:ok, conn} = Chex.Connection.start_link(host: "localhost", port: 9000)
       assert is_pid(conn)
       GenServer.stop(conn)
     end

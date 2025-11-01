@@ -31,7 +31,30 @@ def deps do
 end
 ```
 
-Build dependencies will be compiled automatically via `elixir_make`.
+**Prebuilt binaries** are available for macOS (x86_64, ARM64) and Linux (x86_64, ARM64) and will be downloaded automatically during installation.
+
+### Building from Source
+
+If prebuilt binaries are not available for your platform, or if you prefer to build from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/Intellection/chex.git
+cd chex
+
+# Initialize the clickhouse-cpp submodule
+git submodule update --init --recursive
+
+# Build
+mix deps.get
+mix compile
+```
+
+**Build Requirements:**
+- C++17 compiler (GCC 7+, Clang 5+, or MSVC 2017+)
+- CMake 3.15+
+- OpenSSL development headers
+- Git (for submodule)
 
 ## Quick Start
 
