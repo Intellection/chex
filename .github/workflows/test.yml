@@ -24,6 +24,10 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
           - 9000:9000
           - 8123:8123
@@ -80,6 +84,10 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:latest
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: ""
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
           - 9000:9000
           - 8123:8123
