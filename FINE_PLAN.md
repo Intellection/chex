@@ -875,7 +875,7 @@ Support full ClientOptions:
 ## Phase 6: Production Polish
 
 **Goal:** Error handling, testing, and production-readiness
-**Status:** 🔄 In Progress (Timeout support complete)
+**Status:** 🔄 In Progress (Timeout support + GitHub release preparation complete)
 **Priority:** High
 
 ### ✅ Phase 6A: Socket-Level Timeout Configuration (COMPLETED)
@@ -921,6 +921,56 @@ Added three configurable socket-level timeout options to prevent operations from
 - Connect timeout tested with unreachable IP (TEST-NET-1: 192.0.2.1)
 - Tests verify timeouts fail within expected duration
 - All existing 316 tests remain passing
+
+### ✅ Phase 6B: GitHub Release Preparation (COMPLETED)
+
+**Status:** Complete - Ready for public release
+
+**Deliverables Completed:**
+
+1. **Licensing**
+   - ✅ MIT License added (LICENSE file)
+   - ✅ Third-party notices documented (THIRD_PARTY_NOTICES.md)
+   - ✅ Apache 2.0 dependency compliance verified
+
+2. **Git Submodule Management**
+   - ✅ clickhouse-cpp converted to git submodule at `native/clickhouse-cpp`
+   - ✅ Submodule points to v2.6.0 (commit 69195246)
+   - ✅ CMakeLists.txt updated for flexible path resolution (env var or submodule)
+   - ✅ Removed hardcoded absolute paths
+   - ✅ .gitmodules configured
+
+3. **GitHub Actions CI/CD**
+   - ✅ Comprehensive test workflow (.github/workflows/test.yml)
+   - ✅ Matrix testing: Elixir 1.18.4/1.19.1 × OTP 27.2/28.1
+   - ✅ ClickHouse service container with authentication
+   - ✅ Valgrind memory leak detection job
+   - ✅ Docker-based valgrind testing (Dockerfile.valgrind)
+   - ✅ Formatting checks
+   - ✅ Compiler warnings as errors
+   - ✅ Artifact uploads for valgrind reports
+
+4. **Package Metadata**
+   - ✅ mix.exs updated with proper package configuration
+   - ✅ Hex.pm ready with licenses, links, and file filters
+   - ✅ CHANGELOG.md created (documents v0.2.0 features)
+
+5. **Code Cleanup**
+   - ✅ Removed experimental files (run_*.sh, valgrind_*.txt, docker_build.log)
+   - ✅ Updated .gitignore for valgrind artifacts
+   - ✅ Removed .claude/settings.local.json from git tracking
+   - ✅ Cleaned up backward compatibility code
+
+**GitHub Actions Status:**
+- Automated testing on push to main and pull requests
+- Comprehensive valgrind testing for memory safety
+- Multiple Elixir/OTP version combinations verified
+- Zero memory leaks verified via valgrind
+
+**Remaining for Public Release:**
+- ⏳ Phase 6C: Prebuilt binaries (optional - see research/GITHUB_RELEASE_PLAN.md)
+- ⏳ Documentation polish for public consumption
+- ⏳ Hex.pm publication
 
 ### Error Handling
 
@@ -1641,24 +1691,32 @@ With MVP achieved (Phases 1-4 complete), all advanced types complete (Phase 5A-F
    - ✅ Integration test suite (8 tests, excluded by default)
    - ✅ All 316 tests passing (8 integration tests added)
 
-7. **Phase 6B: Additional Production Features** (NEXT PRIORITY)
-   - Comprehensive error handling refinement
-   - Memory leak testing (valgrind, AddressSanitizer)
-   - CI/CD pipeline setup
-   - Performance optimization and profiling
+7. **✅ Phase 6B: GitHub Release Preparation** (COMPLETED)
+   - ✅ MIT License + third-party notices
+   - ✅ clickhouse-cpp git submodule conversion
+   - ✅ GitHub Actions CI/CD with matrix testing
+   - ✅ Valgrind memory leak detection automation
+   - ✅ Package metadata for Hex.pm
+   - ✅ Code cleanup and .gitignore updates
 
-8. **Phase 7: Explorer DataFrame Integration** (FUTURE)
+8. **Phase 6C: Additional Production Features** (NEXT PRIORITY)
+   - Comprehensive error handling refinement
+   - Performance optimization and profiling
+   - Documentation polish for public consumption
+   - Prebuilt binaries (optional - see research/GITHUB_RELEASE_PLAN.md)
+
+9. **Phase 7: Explorer DataFrame Integration** (FUTURE)
    - Direct DataFrame insert support
    - Zero-copy optimizations with Arrow
    - Schema inference from DataFrame types
    - Natural analytics workflow integration
 
-9. **Phase 8: Advanced Query Features** (NICE TO HAVE)
+10. **Phase 8: Advanced Query Features** (NICE TO HAVE)
    - Streaming SELECT for large result sets
    - Batch operations
    - Async query support
 
-8. **NOT IMPLEMENTING:**
+11. **NOT IMPLEMENTING:**
    - ❌ Ecto Integration (not a good fit for OLAP database)
    - ❌ Distributed Queries (removed)
 
