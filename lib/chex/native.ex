@@ -14,9 +14,19 @@ defmodule Chex.Native do
   def ping(_client), do: :erlang.nif_error(:nif_not_loaded)
 
   # Phase 1 - Foundation NIFs
-  def client_create(_host, _port, _database, _user, _password, _compression, _ssl,
-                    _connect_timeout, _recv_timeout, _send_timeout),
-    do: :erlang.nif_error(:nif_not_loaded)
+  def client_create(
+        _host,
+        _port,
+        _database,
+        _user,
+        _password,
+        _compression,
+        _ssl,
+        _connect_timeout,
+        _recv_timeout,
+        _send_timeout
+      ),
+      do: :erlang.nif_error(:nif_not_loaded)
 
   def client_ping(_client), do: :erlang.nif_error(:nif_not_loaded)
   def client_execute(_client, _sql), do: :erlang.nif_error(:nif_not_loaded)
