@@ -155,21 +155,15 @@ jobs:
           otp-version: ${{ matrix.otp }}
           elixir-version: "1.18.4"
 
+      - name: Setup ClickHouse
+        uses: EpicStep/clickhouse-github-action@v1.1.1
+        with:
+          version: 24.3
+
       - name: Install dependencies
         run: |
           brew install cmake openssl
           mix deps.get
-
-      - name: Start ClickHouse via Docker
-        run: |
-          docker run -d \
-            --name clickhouse \
-            -p 9000:9000 \
-            -p 8123:8123 \
-            clickhouse/clickhouse-server:latest
-          # Wait for ClickHouse to be ready
-          sleep 10
-          docker exec clickhouse clickhouse-client --query "SELECT 1"
 
       - name: Compile
         run: mix compile
@@ -211,21 +205,15 @@ jobs:
           otp-version: ${{ matrix.otp }}
           elixir-version: "1.18.4"
 
+      - name: Setup ClickHouse
+        uses: EpicStep/clickhouse-github-action@v1.1.1
+        with:
+          version: 24.3
+
       - name: Install dependencies
         run: |
           brew install cmake openssl
           mix deps.get
-
-      - name: Start ClickHouse via Docker
-        run: |
-          docker run -d \
-            --name clickhouse \
-            -p 9000:9000 \
-            -p 8123:8123 \
-            clickhouse/clickhouse-server:latest
-          # Wait for ClickHouse to be ready
-          sleep 10
-          docker exec clickhouse clickhouse-client --query "SELECT 1"
 
       - name: Compile
         run: mix compile
