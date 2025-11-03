@@ -47,29 +47,7 @@ jobs:
           files: cache/*.tar.gz
           draft: true
 
-      - name: Run tests on x86_64
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
-
-    services:
-      clickhouse:
-        image: clickhouse/clickhouse-server:latest
-        env:
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_PASSWORD: ""
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          - 9000:9000
-          - 8123:8123
-        options: >-
-          --health-cmd "clickhouse-client --query 'SELECT 1'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-  # Build and test on macOS (builds both ARM64 and x86_64)
+  # Build on macOS (builds both ARM64 and x86_64)
   macos:
     name: macOS (ARM64 + x86_64)
     runs-on: macos-14
@@ -83,37 +61,6 @@ jobs:
         with:
           otp-version: "28.1"
           elixir-version: "1.19.1"
-
-      - name: Download ClickHouse binary
-        run: |
-          curl https://clickhouse.com/ | sh
-          chmod +x ./clickhouse
-
-      - name: Start ClickHouse server
-        run: |
-          ./clickhouse server > ./clickhouse_server.log 2>&1 &
-          echo $! > ./clickhouse_server.pid
-          echo "ClickHouse server started with PID $(cat ./clickhouse_server.pid)"
-          sleep 5
-
-      - name: Wait for ClickHouse
-        run: |
-          echo "Waiting for ClickHouse to start..."
-          for i in {1..60}; do
-            if ./clickhouse client --query "SELECT 1" 2>/dev/null; then
-              echo "ClickHouse is ready!"
-              ./clickhouse client --query "SELECT version()"
-              break
-            fi
-            if [ $i -eq 60 ]; then
-              echo "ClickHouse failed to start. Logs:"
-              cat ./clickhouse_server.log || echo "No log file found"
-              exit 1
-            fi
-            echo "Still waiting... ($i/60)"
-            sleep 2
-          done
-          ./clickhouse client --query "SELECT 1"
 
       - name: Install dependencies
         run: |
@@ -132,9 +79,3 @@ jobs:
         with:
           files: cache/*.tar.gz
           draft: true
-
-      - name: Run tests on macOS
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
