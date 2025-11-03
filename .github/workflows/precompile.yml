@@ -42,18 +42,18 @@ jobs:
           mkdir -p $ELIXIR_MAKE_CACHE_DIR
           MIX_ENV=prod mix elixir_make.precompile
 
-      - name: Run tests on x86_64
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
-
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: cache/*.tar.gz
           draft: true
+
+      - name: Run tests on x86_64
+        run: mix test --exclude integration
+        env:
+          CLICKHOUSE_HOST: localhost
+          CLICKHOUSE_PORT: 9000
 
     services:
       clickhouse:
@@ -100,18 +100,18 @@ jobs:
           mkdir -p $ELIXIR_MAKE_CACHE_DIR
           MIX_ENV=prod mix elixir_make.precompile
 
-      - name: Run tests on ARM64
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
-
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: cache/*.tar.gz
           draft: true
+
+      - name: Run tests on ARM64
+        run: mix test --exclude integration
+        env:
+          CLICKHOUSE_HOST: localhost
+          CLICKHOUSE_PORT: 9000
 
     services:
       clickhouse:
@@ -189,18 +189,18 @@ jobs:
           mkdir -p $ELIXIR_MAKE_CACHE_DIR
           MIX_ENV=prod mix elixir_make.precompile
 
-      - name: Run tests on x86_64 macOS
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
-
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: cache/*.tar.gz
           draft: true
+
+      - name: Run tests on x86_64 macOS
+        run: mix test --exclude integration
+        env:
+          CLICKHOUSE_HOST: localhost
+          CLICKHOUSE_PORT: 9000
 
   # Build and test on macOS Apple Silicon
   macos-arm:
@@ -262,15 +262,15 @@ jobs:
           mkdir -p $ELIXIR_MAKE_CACHE_DIR
           MIX_ENV=prod mix elixir_make.precompile
 
-      - name: Run tests on ARM64 macOS
-        run: mix test --exclude integration
-        env:
-          CLICKHOUSE_HOST: localhost
-          CLICKHOUSE_PORT: 9000
-
       - name: Upload artifacts to release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: cache/*.tar.gz
           draft: true
+
+      - name: Run tests on ARM64 macOS
+        run: mix test --exclude integration
+        env:
+          CLICKHOUSE_HOST: localhost
+          CLICKHOUSE_PORT: 9000
