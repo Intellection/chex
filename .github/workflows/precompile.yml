@@ -3,7 +3,7 @@ name: Precompile NIFs
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   # Build and test on x86_64 Linux, cross-compile for other Linux architectures
@@ -162,19 +162,15 @@ jobs:
 
       - name: Start ClickHouse server
         run: |
-          mkdir -p ./clickhouse_data
-          ./clickhouse server \
-            --path ./clickhouse_data \
-            --http_port 8123 \
-            --tcp_port 9000 \
-            > ./clickhouse_server.log 2>&1 &
+          ./clickhouse server > ./clickhouse_server.log 2>&1 &
           echo $! > ./clickhouse_server.pid
           echo "ClickHouse server started with PID $(cat ./clickhouse_server.pid)"
+          sleep 5
 
       - name: Wait for ClickHouse
         run: |
           echo "Waiting for ClickHouse to start..."
-          for i in {1..60}; do
+          for i in {1..15}; do
             if ./clickhouse client --query "SELECT 1" 2>/dev/null; then
               echo "ClickHouse is ready!"
               ./clickhouse client --query "SELECT version()"
@@ -239,14 +235,10 @@ jobs:
 
       - name: Start ClickHouse server
         run: |
-          mkdir -p ./clickhouse_data
-          ./clickhouse server \
-            --path ./clickhouse_data \
-            --http_port 8123 \
-            --tcp_port 9000 \
-            > ./clickhouse_server.log 2>&1 &
+          ./clickhouse server > ./clickhouse_server.log 2>&1 &
           echo $! > ./clickhouse_server.pid
           echo "ClickHouse server started with PID $(cat ./clickhouse_server.pid)"
+          sleep 5
 
       - name: Wait for ClickHouse
         run: |
