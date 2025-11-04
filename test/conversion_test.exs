@@ -1,7 +1,7 @@
-defmodule Chex.ConversionTest do
+defmodule Natch.ConversionTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Conversion
+  alias Natch.Conversion
 
   describe "rows_to_columns/2" do
     test "converts single row" do

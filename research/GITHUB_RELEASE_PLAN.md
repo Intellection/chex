@@ -1,4 +1,4 @@
-# GitHub Release Preparation Plan for Chex
+# GitHub Release Preparation Plan for Natch
 
 ## Status: In Progress
 
@@ -43,10 +43,10 @@ def project do
 
     # Precompiler configuration
     make_precompiler: {:nif, CCPrecompiler},
-    make_precompiler_url: "https://github.com/YOUR_ORG/chex/releases/download/v#{@version}/@{artefact_filename}",
+    make_precompiler_url: "https://github.com/YOUR_ORG/natch/releases/download/v#{@version}/@{artefact_filename}",
     make_precompiler_nif_versions: [versions: ["2.16", "2.17"]],
-    make_nif_filename: "chex_fine",  # Name of the .so/.dll file (without extension)
-    make_precompiler_priv_paths: ["chex_fine.*"],  # Files to include from priv/ in tarball
+    make_nif_filename: "natch_fine",  # Name of the .so/.dll file (without extension)
+    make_precompiler_priv_paths: ["natch_fine.*"],  # Files to include from priv/ in tarball
     # ... rest of config ...
   ]
 end
@@ -363,15 +363,15 @@ jobs:
    {project_name}-nif-{nif_version}-{arch}-{os}-{version}.tar.gz
 
    Examples (tested platforms):
-   - chex-nif-2.16-x86_64-linux-gnu-0.2.1.tar.gz
-   - chex-nif-2.17-aarch64-linux-gnu-0.2.1.tar.gz
-   - chex-nif-2.17-x86_64-apple-darwin-0.2.1.tar.gz
-   - chex-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
+   - natch-nif-2.16-x86_64-linux-gnu-0.2.1.tar.gz
+   - natch-nif-2.17-aarch64-linux-gnu-0.2.1.tar.gz
+   - natch-nif-2.17-x86_64-apple-darwin-0.2.1.tar.gz
+   - natch-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
 
    Examples (cross-compiled):
-   - chex-nif-2.16-armv7l-linux-gnueabihf-0.2.1.tar.gz
-   - chex-nif-2.17-riscv64-linux-gnu-0.2.1.tar.gz
-   - chex-nif-2.16-i686-linux-gnu-0.2.1.tar.gz
+   - natch-nif-2.16-armv7l-linux-gnueabihf-0.2.1.tar.gz
+   - natch-nif-2.17-riscv64-linux-gnu-0.2.1.tar.gz
+   - natch-nif-2.16-i686-linux-gnu-0.2.1.tar.gz
    ```
 
    The naming is automatic - elixir_make generates based on detected platform.
@@ -380,8 +380,8 @@ jobs:
 
 5. **Tarball Contents:**
    ```
-   chex-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz
-   └── chex_fine.so       # The compiled NIF library
+   natch-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz
+   └── natch_fine.so       # The compiled NIF library
        (other files matching make_precompiler_priv_paths patterns)
    ```
 
@@ -394,10 +394,10 @@ jobs:
 
    # Check generated artifacts
    ls -lh cache/
-   # Should see: chex-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz (or similar)
+   # Should see: natch-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz (or similar)
 
    # Inspect contents
-   tar -tzf cache/chex-nif-*.tar.gz
+   tar -tzf cache/natch-nif-*.tar.gz
    ```
 
 **Step 3: Common Pitfalls and Troubleshooting**
@@ -422,7 +422,7 @@ jobs:
 
 3. **Wrong make_nif_filename:**
    - Must match the actual NIF filename without extension
-   - Check what CMake outputs: `chex_fine.so` → use `"chex_fine"`
+   - Check what CMake outputs: `natch_fine.so` → use `"natch_fine"`
    - Mismatch causes precompiled binary to not be found
 
 4. **Incorrect make_precompiler_url:**
@@ -451,15 +451,15 @@ MIX_ENV=prod mix elixir_make.precompile
 
 # 2. Verify artifact was created
 ls -lh test_cache/
-# Should see: chex-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
+# Should see: natch-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
 
 # 3. Inspect tarball contents
-tar -tzf test_cache/chex-nif-*.tar.gz
-# Should see: chex_fine.so (or .dylib/.dll)
+tar -tzf test_cache/natch-nif-*.tar.gz
+# Should see: natch_fine.so (or .dylib/.dll)
 
 # 4. Test installation from tarball
 rm -rf _build deps priv/*.so
-mix deps.clean chex --unlock
+mix deps.clean natch --unlock
 mix deps.get
 # Should extract from tarball instead of compiling
 
@@ -563,12 +563,12 @@ git push origin main --tags
 
 **Artifacts Generated:** 18-21 binaries per release with naming pattern:
 ```
-chex-nif-{nif_version}-{arch}-{os}-{version}.tar.gz
+natch-nif-{nif_version}-{arch}-{os}-{version}.tar.gz
 
 Examples:
-- chex-nif-2.16-x86_64-linux-gnu-0.2.1.tar.gz
-- chex-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
-- chex-nif-2.17-x86_64-windows-msvc-0.2.1.tar.gz
+- natch-nif-2.16-x86_64-linux-gnu-0.2.1.tar.gz
+- natch-nif-2.17-aarch64-apple-darwin-0.2.1.tar.gz
+- natch-nif-2.17-x86_64-windows-msvc-0.2.1.tar.gz
 ```
 
 **NIF Version Mapping:**
@@ -577,7 +577,7 @@ Examples:
 
 **Storage Location:** GitHub Releases at:
 ```
-https://github.com/YOUR_ORG/chex/releases/download/v0.2.1/{artifact_name}.tar.gz
+https://github.com/YOUR_ORG/natch/releases/download/v0.2.1/{artifact_name}.tar.gz
 ```
 
 These artifacts are **publicly accessible** (no authentication required for downloads).
@@ -588,7 +588,7 @@ These artifacts are **publicly accessible** (no authentication required for down
 
 ```bash
 # Download all artifacts and generate checksums
-# This creates checksum-chex.exs in your working directory
+# This creates checksum-natch.exs in your working directory
 MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
 ```
 
@@ -601,9 +601,9 @@ MIX_ENV=prod mix elixir_make.checksum --all --ignore-unavailable
 
 ```elixir
 %{
-  "chex-nif-2.16-aarch64-apple-darwin-0.2.1.tar.gz" =>
+  "natch-nif-2.16-aarch64-apple-darwin-0.2.1.tar.gz" =>
     "sha256:a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890",
-  "chex-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz" =>
+  "natch-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz" =>
     "sha256:f6e5d4c3b2a1098765fedcba4321098765fedcba4321098765fedcba43210987",
   # ... one entry per platform/NIF combination
 }
@@ -626,7 +626,7 @@ mix hex.publish
 
 **What gets uploaded to Hex.pm:**
 - Elixir source code (lib/, test/)
-- Native code source (native/chex_fine/)
+- Native code source (native/natch_fine/)
 - Build configuration (mix.exs, Makefile, CMakeLists.txt)
 - **checksum.exs** (enables precompiled binary downloads)
 - Documentation and metadata
@@ -637,7 +637,7 @@ def project do
   [
     # ...
     make_precompiler: {:nif, CCPrecompiler},
-    make_precompiler_url: "https://github.com/YOUR_ORG/chex/releases/download/v#{@version}/@{artefact_filename}",
+    make_precompiler_url: "https://github.com/YOUR_ORG/natch/releases/download/v#{@version}/@{artefact_filename}",
     make_precompiler_nif_versions: [versions: ["2.16", "2.17"]],
     # ...
   ]
@@ -653,7 +653,7 @@ The `@{artefact_filename}` placeholder gets dynamically replaced with the platfo
 # mix.exs
 def deps do
   [
-    {:chex, "~> 0.2.1"}
+    {:natch, "~> 0.2.1"}
   ]
 end
 ```
@@ -677,8 +677,8 @@ mix deps.get
 3. **Construct Download URL:**
    - Takes `make_precompiler_url` template from mix.exs
    - Substitutes version: `v0.2.1`
-   - Substitutes artifact name: `chex-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz`
-   - Result: `https://github.com/YOUR_ORG/chex/releases/download/v0.2.1/chex-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz`
+   - Substitutes artifact name: `natch-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz`
+   - Result: `https://github.com/YOUR_ORG/natch/releases/download/v0.2.1/natch-nif-2.17-x86_64-linux-gnu-0.2.1.tar.gz`
 
 4. **Download Precompiled Binary:**
    - Fetches `.tar.gz` from GitHub Releases
@@ -692,7 +692,7 @@ mix deps.get
 
 6. **Extract to priv/:**
    ```
-   deps/chex/priv/chex_fine.so
+   deps/natch/priv/natch_fine.so
    ```
 
 7. **Done!** Installation complete in 2-5 seconds (vs 2-5 minutes for compilation)
@@ -707,7 +707,7 @@ If no precompiled binary exists for the user's platform:
 
 **Force Source Build:**
 ```bash
-CHEX_BUILD=1 mix deps.get
+NATCH_BUILD=1 mix deps.get
 ```
 
 ### Architecture Diagram
@@ -729,7 +729,7 @@ CHEX_BUILD=1 mix deps.get
 │         └────────────────┴────────────────┘                      │
 │                          │                                       │
 │         Upload .tar.gz files to GitHub Releases                  │
-│         https://github.com/ORG/chex/releases/tag/v0.2.1         │
+│         https://github.com/ORG/natch/releases/tag/v0.2.1         │
 └────────────────────────┬─────────────────────────────────────────┘
                          │
                          ▼
@@ -739,7 +739,7 @@ CHEX_BUILD=1 mix deps.get
 │  $ mix elixir_make.checksum --all --ignore-unavailable          │
 │  - Downloads all artifacts from GitHub Release                   │
 │  - Calculates SHA256 for each                                   │
-│  - Creates checksum-chex.exs in working directory               │
+│  - Creates checksum-natch.exs in working directory               │
 │  (NOT committed to git - it's ephemeral per release)            │
 └────────────────────────┬─────────────────────────────────────────┘
                          │
@@ -749,7 +749,7 @@ CHEX_BUILD=1 mix deps.get
 │                                                                  │
 │  $ mix hex.publish                                              │
 │  Uploads: source code + checksum.exs + mix.exs config           │
-│  Package available at: https://hex.pm/packages/chex             │
+│  Package available at: https://hex.pm/packages/natch             │
 └────────────────────────┬─────────────────────────────────────────┘
                          │
                          ▼
@@ -764,7 +764,7 @@ CHEX_BUILD=1 mix deps.get
 │  │ 3. Build URL from make_precompiler_url template            │ │
 │  │ 4. Download .tar.gz from GitHub Releases                   │ │
 │  │ 5. Verify SHA256 against checksum.exs                      │ │
-│  │ 6. Extract to deps/chex/priv/chex_fine.so                 │ │
+│  │ 6. Extract to deps/natch/priv/natch_fine.so                 │ │
 │  │ 7. Done! ✅ (2-5 seconds, no compilation)                  │ │
 │  └────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
@@ -789,7 +789,7 @@ CHEX_BUILD=1 mix deps.get
 **If precompiled binary download fails:**
 - Falls back to source compilation automatically
 - User needs: cmake, C++17 compiler, libssl-dev
-- Can force with: `CHEX_BUILD=1 mix deps.get`
+- Can force with: `NATCH_BUILD=1 mix deps.get`
 
 **If checksum verification fails:**
 - Indicates corrupted download or tampered binary
@@ -809,7 +809,7 @@ CHEX_BUILD=1 mix deps.get
 - [ ] Tests pass on GitHub Actions (all matrix combinations)
 - [ ] Valgrind reports 0 memory leaks
 - [ ] Prebuilt binaries work on all platforms
-- [ ] Source build works with `CHEX_BUILD=true`
+- [ ] Source build works with `NATCH_BUILD=true`
 - [ ] Documentation is accurate and complete
 - [ ] CHANGELOG is up to date
 - [ ] Mix hex.build succeeds
@@ -883,7 +883,7 @@ CHEX_BUILD=1 mix deps.get
 **The Problem:**
 Cross-compiled binaries (aarch64, armv7l, riscv64, etc.) are built but **not tested** before publishing. This is risky!
 
-**Chosen Strategy for Chex:**
+**Chosen Strategy for Natch:**
 
 **Build and test on 4 major platforms with real hardware:**
 - ✅ x86_64-linux-gnu (ubuntu-latest)
@@ -910,7 +910,7 @@ Cross-compiled binaries (aarch64, armv7l, riscv64, etc.) are built but **not tes
 ```markdown
 ## Platform Support
 
-Chex provides precompiled binaries for the following platforms:
+Natch provides precompiled binaries for the following platforms:
 
 **Tested in CI (recommended):**
 - Linux x86_64 (tested on Ubuntu)

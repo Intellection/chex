@@ -1,4 +1,4 @@
-defmodule Chex.ConnectionError do
+defmodule Natch.ConnectionError do
   @moduledoc """
   Raised when a connection to ClickHouse cannot be established.
 
@@ -25,7 +25,7 @@ defmodule Chex.ConnectionError do
   end
 end
 
-defmodule Chex.ServerError do
+defmodule Natch.ServerError do
   @moduledoc """
   Raised when ClickHouse server returns an error.
 
@@ -58,7 +58,7 @@ defmodule Chex.ServerError do
   end
 end
 
-defmodule Chex.ValidationError do
+defmodule Natch.ValidationError do
   @moduledoc """
   Raised when client-side validation fails.
 
@@ -82,7 +82,7 @@ defmodule Chex.ValidationError do
   end
 end
 
-defmodule Chex.ProtocolError do
+defmodule Natch.ProtocolError do
   @moduledoc """
   Raised when there's a protocol-level communication error.
 
@@ -106,7 +106,7 @@ defmodule Chex.ProtocolError do
   end
 end
 
-defmodule Chex.CompressionError do
+defmodule Natch.CompressionError do
   @moduledoc """
   Raised when compression or decompression fails.
 
@@ -130,7 +130,7 @@ defmodule Chex.CompressionError do
   end
 end
 
-defmodule Chex.UnimplementedError do
+defmodule Natch.UnimplementedError do
   @moduledoc """
   Raised when a requested feature is not implemented.
 
@@ -154,7 +154,7 @@ defmodule Chex.UnimplementedError do
   end
 end
 
-defmodule Chex.OpenSSLError do
+defmodule Natch.OpenSSLError do
   @moduledoc """
   Raised when SSL/TLS operations fail.
 
@@ -179,7 +179,7 @@ defmodule Chex.OpenSSLError do
 end
 
 # Shared error handling functions
-defmodule Chex.Error do
+defmodule Natch.Error do
   @moduledoc false
 
   @doc """
@@ -193,31 +193,31 @@ defmodule Chex.Error do
 
     case Jason.decode(message) do
       {:ok, %{"type" => "validation"} = error} ->
-        raise Chex.ValidationError, message: error["message"]
+        raise Natch.ValidationError, message: error["message"]
 
       {:ok, %{"type" => "protocol"} = error} ->
-        raise Chex.ProtocolError, message: error["message"]
+        raise Natch.ProtocolError, message: error["message"]
 
       {:ok, %{"type" => "server"} = error} ->
-        raise Chex.ServerError,
+        raise Natch.ServerError,
           message: error["message"],
           code: error["code"],
           name: error["name"],
           stack_trace: error["stack_trace"]
 
       {:ok, %{"type" => "connection"} = error} ->
-        raise Chex.ConnectionError,
+        raise Natch.ConnectionError,
           message: error["message"],
           reason: :connection_failed
 
       {:ok, %{"type" => "compression"} = error} ->
-        raise Chex.CompressionError, message: error["message"]
+        raise Natch.CompressionError, message: error["message"]
 
       {:ok, %{"type" => "unimplemented"} = error} ->
-        raise Chex.UnimplementedError, message: error["message"]
+        raise Natch.UnimplementedError, message: error["message"]
 
       {:ok, %{"type" => "openssl"} = error} ->
-        raise Chex.OpenSSLError, message: error["message"]
+        raise Natch.OpenSSLError, message: error["message"]
 
       {:ok, %{"type" => "unknown"} = error} ->
         raise RuntimeError, message: error["message"]

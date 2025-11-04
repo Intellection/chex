@@ -103,13 +103,13 @@ jobs:
           submodules: recursive
 
       - name: Build Docker image for valgrind
-        run: docker build -f Dockerfile.valgrind -t chex-valgrind .
+        run: docker build -f Dockerfile.valgrind -t natch-valgrind .
 
       - name: Run valgrind tests
         run: |
           docker run --rm \
             --network host \
-            chex-valgrind 2>&1 | tee valgrind_output.txt
+            natch-valgrind 2>&1 | tee valgrind_output.txt
 
       - name: Check for memory leaks
         run: |

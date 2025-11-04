@@ -1,7 +1,7 @@
-defmodule Chex.QueryTest do
+defmodule Natch.QueryTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Connection
+  alias Natch.Connection
 
   setup do
     # Generate unique table name for this test
@@ -52,7 +52,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, name: :string]
       columns = %{id: [1], name: ["Alice"]}
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query
       assert {:ok, result} = Connection.select_rows(conn, "SELECT id, name FROM #{table}")
@@ -76,7 +76,7 @@ defmodule Chex.QueryTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query
       assert {:ok, result} = Connection.select_rows(conn, "SELECT id, name FROM #{table}")
@@ -103,7 +103,7 @@ defmodule Chex.QueryTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query with WHERE
       assert {:ok, result} =
@@ -142,7 +142,7 @@ defmodule Chex.QueryTest do
         created_at: [~U[2024-10-29 10:00:00Z]]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query
       assert {:ok, [result]} =
@@ -177,7 +177,7 @@ defmodule Chex.QueryTest do
         name: ["Charlie", "Alice", "Bob"]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query with ORDER BY
       assert {:ok, result} =
@@ -205,7 +205,7 @@ defmodule Chex.QueryTest do
         name: ["Alice", "Bob", "Charlie"]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query with LIMIT
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} LIMIT 2")
@@ -224,7 +224,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, name: :string, amount: :float64]
       columns = %{id: [1], name: ["Alice"], amount: [100.5]}
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query specific columns
       assert {:ok, [result]} = Connection.select_rows(conn, "SELECT name FROM #{table}")
@@ -249,7 +249,7 @@ defmodule Chex.QueryTest do
         amount: [100.0, 200.0, 300.0]
       }
 
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query with COUNT
       assert {:ok, [result]} =
@@ -280,7 +280,7 @@ defmodule Chex.QueryTest do
       }
 
       schema = [id: :uint64, value: :uint64]
-      Chex.insert(conn, "#{table}", columns, schema)
+      Natch.insert(conn, "#{table}", columns, schema)
 
       # Query all
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table}")
@@ -328,7 +328,7 @@ defmodule Chex.QueryTest do
         created_at: [~U[2024-10-29 10:00:00Z], ~U[2024-10-29 11:00:00Z]]
       }
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
 
       # Query back
       assert {:ok, select_rows} =
@@ -365,7 +365,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, is_active: :bool]
       columns = %{id: [1, 2, 3], is_active: [true, false, true]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -382,7 +382,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, event_date: :date]
       columns = %{id: [1, 2], event_date: [~D[2024-01-15], ~D[2024-12-31]]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -405,7 +405,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, price: :float32]
       columns = %{id: [1, 2], price: [19.99, -5.5]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -423,7 +423,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, count: :uint32]
       columns = %{id: [1, 2, 3], count: [0, 1000, 4_294_967_295]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert [%{count: 0}, %{count: 1000}, %{count: 4_294_967_295}] = result
@@ -439,7 +439,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, port: :uint16]
       columns = %{id: [1, 2, 3], port: [0, 8080, 65_535]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert [%{port: 0}, %{port: 8080}, %{port: 65_535}] = result
@@ -455,7 +455,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, temperature: :int32]
       columns = %{id: [1, 2, 3], temperature: [-2_147_483_648, 0, 2_147_483_647]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
 
@@ -473,7 +473,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, offset: :int16]
       columns = %{id: [1, 2, 3], offset: [-32_768, 0, 32_767]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert [%{offset: -32_768}, %{offset: 0}, %{offset: 32_767}] = result
@@ -489,7 +489,7 @@ defmodule Chex.QueryTest do
 
       schema = [id: :uint64, delta: :int8]
       columns = %{id: [1, 2, 3], delta: [-128, 0, 127]}
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert [%{delta: -128}, %{delta: 0}, %{delta: 127}] = result
@@ -534,7 +534,7 @@ defmodule Chex.QueryTest do
         delta: [10, -10]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -571,7 +571,7 @@ defmodule Chex.QueryTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -601,7 +601,7 @@ defmodule Chex.QueryTest do
         timestamp: [dt1, dt2, dt3]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -631,7 +631,7 @@ defmodule Chex.QueryTest do
         price: [dec1, dec2, dec3]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -660,7 +660,7 @@ defmodule Chex.QueryTest do
         score: [100, 200, nil, 400]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 4

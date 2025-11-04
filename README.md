@@ -1,10 +1,10 @@
-# Chex
+# Natch
 
 ⚡ **High-performance native ClickHouse client for Elixir**
 
-Chex provides fast access to ClickHouse using the native TCP protocol (port 9000) via C++ NIFs. Native protocol benefits include binary columnar format, efficient compression, and reduced overhead compared to HTTP-based clients.
+Natch provides fast access to ClickHouse using the native TCP protocol (port 9000) via C++ NIFs. Native protocol benefits include binary columnar format, efficient compression, and reduced overhead compared to HTTP-based clients.
 
-## Why Chex?
+## Why Natch?
 
 - 🚀 **Native Protocol Performance** - Direct TCP connection using ClickHouse's binary protocol
 - 📊 **Columnar-First Design** - API designed for analytics workloads, not OLTP
@@ -21,12 +21,12 @@ Chex provides fast access to ClickHouse using the native TCP protocol (port 9000
 
 ## Installation
 
-Add `chex` to your list of dependencies in `mix.exs`:
+Add `natch` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:chex, "~> 0.2.0"}
+    {:natch, "~> 0.2.0"}
   ]
 end
 ```
@@ -39,8 +39,8 @@ If prebuilt binaries are not available for your platform, or if you prefer to bu
 
 ```bash
 # Clone the repository
-git clone https://github.com/Intellection/chex.git
-cd chex
+git clone https://github.com/Intellection/natch.git
+cd natch
 
 # Initialize the clickhouse-cpp submodule
 git submodule update --init --recursive
@@ -62,14 +62,14 @@ mix compile
 
 ```elixir
 # Start a connection
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "localhost",
   port: 9000,
   database: "default"
 )
 
 # Create a table
-Chex.Connection.execute(conn, """
+Natch.Connection.execute(conn, """
 CREATE TABLE events (
   id UInt64,
   user_id UInt32,
@@ -107,10 +107,10 @@ schema = [
   metadata: {:nullable, :string}
 ]
 
-:ok = Chex.insert(conn, "events", columns, schema)
+:ok = Natch.insert(conn, "events", columns, schema)
 
 # Query data
-{:ok, results} = Chex.Connection.select_rows(conn, "SELECT * FROM events WHERE user_id = 100")
+{:ok, results} = Natch.Connection.select_rows(conn, "SELECT * FROM events WHERE user_id = 100")
 IO.inspect(results)
 # => [
 #      %{id: 1, user_id: 100, event_type: "click", ...},
@@ -123,7 +123,7 @@ IO.inspect(results)
 ClickHouse Cloud requires SSL/TLS connections on port 9440:
 
 ```elixir
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "your-instance.clickhouse.cloud",
   port: 9440,
   database: "default",
@@ -133,14 +133,14 @@ ClickHouse Cloud requires SSL/TLS connections on port 9440:
 )
 ```
 
-**Note:** SSL support requires clickhouse-cpp to be built with OpenSSL. If you get a `Chex.OpenSSLError` saying "Library was built with no SSL support", the C++ library needs to be rebuilt with `-DWITH_OPENSSL=ON` CMake flag. This is typically handled automatically by package managers on systems with OpenSSL development libraries installed.
+**Note:** SSL support requires clickhouse-cpp to be built with OpenSSL. If you get a `Natch.OpenSSLError` saying "Library was built with no SSL support", the C++ library needs to be rebuilt with `-DWITH_OPENSSL=ON` CMake flag. This is typically handled automatically by package managers on systems with OpenSSL development libraries installed.
 
 ### Timeout Configuration
 
 Configure socket-level timeouts to prevent operations from hanging indefinitely in production:
 
 ```elixir
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "localhost",
   port: 9000,
   connect_timeout: 5_000,   # Time to establish TCP connection (default: 5000ms)
@@ -149,7 +149,7 @@ Configure socket-level timeouts to prevent operations from hanging indefinitely 
 )
 ```
 
-**Important:** The default `recv_timeout` is 0 (no timeout), which allows long-running analytical queries to complete. For production use, consider setting explicit timeouts based on your workload. When a timeout occurs, a `Chex.ConnectionError` is raised.
+**Important:** The default `recv_timeout` is 0 (no timeout), which allows long-running analytical queries to complete. For production use, consider setting explicit timeouts based on your workload. When a timeout occurs, a `Natch.ConnectionError` is raised.
 
 ## Benchmarks
 
@@ -159,27 +159,27 @@ Real-world performance comparison vs Pillar (HTTP-based client) on M3 Pro, teste
 
 ### INSERT Performance
 
-| Rows | Chex | Pillar | Speedup | Memory (Chex) | Memory (Pillar) |
+| Rows | Natch | Pillar | Speedup | Memory (Natch) | Memory (Pillar) |
 |------|------|--------|---------|---------------|-----------------|
 | 10k | 13.5 ms | 63.9 ms | **4.7x faster** | 976 B | 45 MB |
 | 100k | 184 ms | 626 ms | **3.4x faster** | 976 B | 452 MB |
 | 1M | 2,094 ms | 5,545 ms | **2.6x faster** | 976 B | 4.5 GB |
 
-**Chex uses ~4.6 million times less memory** than Pillar for inserts due to columnar format.
+**Natch uses ~4.6 million times less memory** than Pillar for inserts due to columnar format.
 
 ### SELECT Performance
 
-| Query Type | Chex | Pillar | Speedup | Memory (Chex) | Memory (Pillar) |
+| Query Type | Natch | Pillar | Speedup | Memory (Natch) | Memory (Pillar) |
 |------------|------|--------|---------|---------------|-----------------|
 | Aggregation | 3.6 ms | 4.9 ms | **1.4x faster** | 544 B | 17 KB |
 | Filtered (10k rows) | 12 ms | 53 ms | **4.4x faster** | 128 B | 30 MB |
 | Full scan (1M rows) | 802 ms | 4,980 ms | **6.2x faster** | 128 B | 3 GB |
 
-**Chex uses ~5.5 million times less memory** than Pillar for large SELECT queries due to streaming columnar format vs materialized row-oriented maps.
+**Natch uses ~5.5 million times less memory** than Pillar for large SELECT queries due to streaming columnar format vs materialized row-oriented maps.
 
 ### Key Takeaways
 
-- **Native protocol is faster** - Chex's native TCP protocol with binary columnar format outperforms HTTP+JSON
+- **Native protocol is faster** - Natch's native TCP protocol with binary columnar format outperforms HTTP+JSON
 - **Massive memory efficiency** - Millions of times less memory usage due to streaming and columnar format
 - **Scales better** - Performance advantage increases with data size (6.2x for 1M rows vs 1.4x for aggregations)
 
@@ -189,7 +189,7 @@ See `bench/README.md` and `BINARY_PASSTHROUGH.md` for detailed analysis and meth
 
 ### Columnar Format (Recommended)
 
-Chex uses a **columnar-first API** that matches ClickHouse's native storage format:
+Natch uses a **columnar-first API** that matches ClickHouse's native storage format:
 
 ```elixir
 # ✅ GOOD: Columnar format - 3 NIF calls for any number of rows
@@ -199,7 +199,7 @@ columns = %{
   value: [100.0, 200.0, 300.0, 400.0, 500.0]
 }
 
-Chex.insert(conn, "table", columns, schema)
+Natch.insert(conn, "table", columns, schema)
 ```
 
 Why columnar?
@@ -210,7 +210,7 @@ Why columnar?
 
 ### Type System
 
-Chex supports **all ClickHouse types** with full roundtrip fidelity:
+Natch supports **all ClickHouse types** with full roundtrip fidelity:
 
 #### Primitive Types
 ```elixir
@@ -316,13 +316,13 @@ columns = %{
 
 ```elixir
 # Basic connection
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "localhost",
   port: 9000
 )
 
 # With authentication and options
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "clickhouse.example.com",
   port: 9000,
   database: "analytics",
@@ -347,7 +347,7 @@ Connection options:
 #### DDL Operations
 ```elixir
 # Create table
-:ok = Chex.Connection.execute(conn, """
+:ok = Natch.Connection.execute(conn, """
 CREATE TABLE users (
   id UInt64,
   name String,
@@ -357,29 +357,29 @@ ORDER BY id
 """)
 
 # Drop table
-:ok = Chex.Connection.execute(conn, "DROP TABLE users")
+:ok = Natch.Connection.execute(conn, "DROP TABLE users")
 
 # Alter table
-:ok = Chex.Connection.execute(conn, "ALTER TABLE users ADD COLUMN age UInt8")
+:ok = Natch.Connection.execute(conn, "ALTER TABLE users ADD COLUMN age UInt8")
 ```
 
 #### SELECT Queries
 
-Chex provides two query formats to suit different use cases:
+Natch provides two query formats to suit different use cases:
 
 ##### Row-Major Format (Traditional)
 Returns results as a list of maps, where each map represents a row:
 
 ```elixir
 # Simple query
-{:ok, rows} = Chex.Connection.select_rows(conn, "SELECT * FROM users")
+{:ok, rows} = Natch.Connection.select_rows(conn, "SELECT * FROM users")
 # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
 
 # With WHERE clause
-{:ok, rows} = Chex.Connection.select_rows(conn, "SELECT * FROM users WHERE id > 100")
+{:ok, rows} = Natch.Connection.select_rows(conn, "SELECT * FROM users WHERE id > 100")
 
 # Aggregations
-{:ok, [result]} = Chex.Connection.select_rows(conn, """
+{:ok, [result]} = Natch.Connection.select_rows(conn, """
   SELECT
     event_type,
     count() as count,
@@ -395,11 +395,11 @@ Returns results as a map of column lists, ideal for large result sets and data a
 
 ```elixir
 # Query returns columnar format
-{:ok, cols} = Chex.Connection.select_cols(conn, "SELECT * FROM users")
+{:ok, cols} = Natch.Connection.select_cols(conn, "SELECT * FROM users")
 # => {:ok, %{id: [1, 2, 3], name: ["Alice", "Bob", "Charlie"]}}
 
 # Perfect for analytics workflows
-{:ok, data} = Chex.Connection.select_cols(conn, "SELECT user_id, value FROM events")
+{:ok, data} = Natch.Connection.select_cols(conn, "SELECT user_id, value FROM events")
 # => {:ok, %{user_id: [1, 2, 1, 3], value: [10.5, 20.0, 15.5, 30.0]}}
 
 # Easy integration with data processing libraries
@@ -419,26 +419,26 @@ columns = %{
 
 schema = [id: :uint64, name: :string]
 
-:ok = Chex.insert(conn, "users", columns, schema)
+:ok = Natch.insert(conn, "users", columns, schema)
 ```
 
 #### Low-Level API (Advanced)
 ```elixir
 # Build block manually for maximum control
-block = Chex.Native.block_create()
+block = Natch.Native.block_create()
 
 # Create and populate columns
-id_col = Chex.Column.new(:uint64)
-Chex.Column.append_bulk(id_col, [1, 2, 3])
-Chex.Native.block_append_column(block, "id", id_col.ref)
+id_col = Natch.Column.new(:uint64)
+Natch.Column.append_bulk(id_col, [1, 2, 3])
+Natch.Native.block_append_column(block, "id", id_col.ref)
 
-name_col = Chex.Column.new(:string)
-Chex.Column.append_bulk(name_col, ["Alice", "Bob", "Charlie"])
-Chex.Native.block_append_column(block, "name", name_col.ref)
+name_col = Natch.Column.new(:string)
+Natch.Column.append_bulk(name_col, ["Alice", "Bob", "Charlie"])
+Natch.Native.block_append_column(block, "name", name_col.ref)
 
 # Get client and insert
 client_ref = GenServer.call(conn, :get_client)
-Chex.Native.client_insert(client_ref, "users", block)
+Natch.Native.client_insert(client_ref, "users", block)
 ```
 
 ## Performance Tips
@@ -467,7 +467,7 @@ data
 |> Stream.chunk_every(chunk_size)
 |> Enum.each(fn chunk ->
   columns = transpose_to_columnar(chunk)
-  Chex.insert(conn, "table", columns, schema)
+  Natch.insert(conn, "table", columns, schema)
 end)
 ```
 
@@ -486,7 +486,7 @@ schema = [age: :uint8]  # Not :uint64
 ### 4. Enable Compression
 ```elixir
 # LZ4 compression reduces bandwidth by ~70% for typical workloads
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "localhost",
   port: 9000,
   compression: :lz4  # Enabled by default
@@ -495,7 +495,7 @@ schema = [age: :uint8]  # Not :uint64
 
 ## Complex Nesting Examples
 
-Chex supports arbitrarily complex nested types:
+Natch supports arbitrarily complex nested types:
 
 ```elixir
 # Triple-nested arrays with nullables
@@ -519,13 +519,13 @@ All these patterns work with full INSERT→SELECT roundtrip fidelity.
 
 ## Architecture
 
-Chex uses a three-layer architecture:
+Natch uses a three-layer architecture:
 
 ```
 ┌─────────────────────────────────────┐
 │  Elixir Application Layer           │
-│  - Chex.insert/4                    │
-│  - Chex.Connection GenServer         │
+│  - Natch.insert/4                    │
+│  - Natch.Connection GenServer         │
 │  - Idiomatic Elixir API             │
 └─────────────────────────────────────┘
               ↓

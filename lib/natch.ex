@@ -1,22 +1,22 @@
-defmodule Chex do
+defmodule Natch do
   @moduledoc """
   Elixir client for ClickHouse database using native TCP protocol.
 
-  Chex provides a high-level API for interacting with ClickHouse through
+  Natch provides a high-level API for interacting with ClickHouse through
   the clickhouse-cpp library via FINE (Foreign Interface Native Extensions),
   offering high-performance native protocol access.
 
   ## Quick Start
 
       # Start a connection
-      {:ok, conn} = Chex.start_link(
+      {:ok, conn} = Natch.start_link(
         host: "localhost",
         port: 9000,
         database: "default"
       )
 
       # Execute DDL
-      :ok = Chex.execute(conn, "CREATE TABLE users (id UInt64, name String) ENGINE = Memory")
+      :ok = Natch.execute(conn, "CREATE TABLE users (id UInt64, name String) ENGINE = Memory")
 
       # Insert data (columnar format)
       columns = %{
@@ -24,10 +24,10 @@ defmodule Chex do
         name: ["Alice", "Bob"]
       }
       schema = [id: :uint64, name: :string]
-      :ok = Chex.insert(conn, "users", columns, schema)
+      :ok = Natch.insert(conn, "users", columns, schema)
 
       # Query data
-      {:ok, rows} = Chex.query(conn, "SELECT * FROM users ORDER BY id")
+      {:ok, rows} = Natch.query(conn, "SELECT * FROM users ORDER BY id")
       # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
 
   ## Connection Options
@@ -52,7 +52,7 @@ defmodule Chex do
   More types coming in Phase 5 (Nullable, Array, Date, Bool, Decimal, etc.)
   """
 
-  alias Chex.Connection
+  alias Natch.Connection
 
   @type conn :: pid() | atom()
   @type row :: map()
@@ -75,9 +75,9 @@ defmodule Chex do
 
   ## Examples
 
-      {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
-      {:ok, conn} = Chex.start_link(database: "analytics", user: "readonly")
-      {:ok, conn} = Chex.start_link(name: :my_conn)
+      {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
+      {:ok, conn} = Natch.start_link(database: "analytics", user: "readonly")
+      {:ok, conn} = Natch.start_link(name: :my_conn)
   """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
@@ -89,7 +89,7 @@ defmodule Chex do
 
   ## Examples
 
-      :ok = Chex.stop(conn)
+      :ok = Natch.stop(conn)
   """
   @spec stop(conn()) :: :ok
   def stop(conn) do
@@ -101,7 +101,7 @@ defmodule Chex do
 
   ## Examples
 
-      :ok = Chex.ping(conn)
+      :ok = Natch.ping(conn)
   """
   @spec ping(conn()) :: :ok | {:error, term()}
   def ping(conn) do
@@ -113,7 +113,7 @@ defmodule Chex do
 
   ## Examples
 
-      :ok = Chex.reset(conn)
+      :ok = Natch.reset(conn)
   """
   @spec reset(conn()) :: :ok | {:error, term()}
   def reset(conn) do
@@ -129,13 +129,13 @@ defmodule Chex do
 
   ## Examples
 
-      {:ok, rows} = Chex.query(conn, "SELECT * FROM users")
+      {:ok, rows} = Natch.query(conn, "SELECT * FROM users")
       # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
 
-      {:ok, rows} = Chex.query(conn, "SELECT id, name FROM users WHERE id = 1")
+      {:ok, rows} = Natch.query(conn, "SELECT id, name FROM users WHERE id = 1")
       # => {:ok, [%{id: 1, name: "Alice"}]}
 
-      {:ok, rows} = Chex.query(conn, "SELECT count() as cnt FROM users")
+      {:ok, rows} = Natch.query(conn, "SELECT count() as cnt FROM users")
       # => {:ok, [%{cnt: 2}]}
   """
   @spec query(conn(), String.t()) :: {:ok, [row()]} | {:error, term()}
@@ -148,7 +148,7 @@ defmodule Chex do
 
   ## Examples
 
-      rows = Chex.query!(conn, "SELECT * FROM users")
+      rows = Natch.query!(conn, "SELECT * FROM users")
       # => [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]
   """
   @spec query!(conn(), String.t()) :: [row()]
@@ -166,10 +166,10 @@ defmodule Chex do
 
   ## Examples
 
-      :ok = Chex.execute(conn, "CREATE TABLE users (id UInt64, name String) ENGINE = Memory")
-      :ok = Chex.execute(conn, "DROP TABLE users")
-      :ok = Chex.execute(conn, "ALTER TABLE users ADD COLUMN age UInt8")
-      :ok = Chex.execute(conn, "INSERT INTO users VALUES (1, 'Alice')")
+      :ok = Natch.execute(conn, "CREATE TABLE users (id UInt64, name String) ENGINE = Memory")
+      :ok = Natch.execute(conn, "DROP TABLE users")
+      :ok = Natch.execute(conn, "ALTER TABLE users ADD COLUMN age UInt8")
+      :ok = Natch.execute(conn, "INSERT INTO users VALUES (1, 'Alice')")
   """
   @spec execute(conn(), String.t()) :: :ok | {:error, term()}
   def execute(conn, sql) do
@@ -181,7 +181,7 @@ defmodule Chex do
 
   ## Examples
 
-      Chex.execute!(conn, "CREATE TABLE test (id UInt64) ENGINE = Memory")
+      Natch.execute!(conn, "CREATE TABLE test (id UInt64) ENGINE = Memory")
   """
   @spec execute!(conn(), String.t()) :: :ok
   def execute!(conn, sql) do
@@ -196,7 +196,7 @@ defmodule Chex do
   @doc """
   Inserts data into a table using native columnar format.
 
-  Chex uses **columnar format** for maximum performance (10-1000x faster than row-oriented).
+  Natch uses **columnar format** for maximum performance (10-1000x faster than row-oriented).
   Columns should be a map of column_name => [values].
 
   Schema defines the column names and types.
@@ -224,7 +224,7 @@ defmodule Chex do
         name: ["Alice", "Bob", "Charlie"]
       }
       schema = [id: :uint64, name: :string]
-      :ok = Chex.insert(conn, "users", columns, schema)
+      :ok = Natch.insert(conn, "users", columns, schema)
 
       # With all types
       columns = %{
@@ -241,7 +241,7 @@ defmodule Chex do
         amount: :float64,
         created_at: :datetime
       ]
-      :ok = Chex.insert(conn, "events", columns, schema)
+      :ok = Natch.insert(conn, "events", columns, schema)
 
       # Bulk insert (extremely efficient!)
       columns = %{
@@ -249,12 +249,12 @@ defmodule Chex do
         value: Enum.map(1..100_000, & &1 * 2)
       }
       schema = [id: :uint64, value: :uint64]
-      :ok = Chex.insert(conn, "bulk_table", columns, schema)
+      :ok = Natch.insert(conn, "bulk_table", columns, schema)
 
       # If you have row-oriented data, convert first:
       rows = [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]
-      columns = Chex.Conversion.rows_to_columns(rows, schema)
-      :ok = Chex.insert(conn, "users", columns, schema)
+      columns = Natch.Conversion.rows_to_columns(rows, schema)
+      :ok = Natch.insert(conn, "users", columns, schema)
   """
   @spec insert(conn(), String.t(), map(), schema()) :: :ok | {:error, term()}
   def insert(conn, table, columns, schema) when is_map(columns) and is_list(schema) do
@@ -268,7 +268,7 @@ defmodule Chex do
 
       columns = %{id: [1, 2], name: ["Alice", "Bob"]}
       schema = [id: :uint64, name: :string]
-      Chex.insert!(conn, "users", columns, schema)
+      Natch.insert!(conn, "users", columns, schema)
   """
   @spec insert!(conn(), String.t(), map(), schema()) :: :ok
   def insert!(conn, table, columns, schema) do

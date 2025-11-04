@@ -1,11 +1,11 @@
-defmodule Chex.MixProject do
+defmodule Natch.MixProject do
   use Mix.Project
 
   @version "0.2.0"
 
   def project do
     [
-      app: :chex,
+      app: :natch,
       version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -16,14 +16,14 @@ defmodule Chex.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
       make_clean: ["clean"],
-      make_cwd: "native/chex_fine",
+      make_cwd: "native/natch_fine",
       # Precompiler configuration
       make_precompiler: {:nif, CCPrecompiler},
       make_precompiler_url:
-        "https://github.com/Intellection/chex/releases/download/v#{@version}/@{artefact_filename}",
+        "https://github.com/Intellection/natch/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_nif_versions: [versions: ["2.17"]],
-      make_nif_filename: "chex_fine",
-      make_precompiler_priv_paths: ["chex_fine.*"]
+      make_nif_filename: "natch_fine",
+      make_precompiler_priv_paths: ["natch_fine.*"]
     ]
   end
 
@@ -31,17 +31,17 @@ defmodule Chex.MixProject do
     [
       licenses: ["MIT"],
       links: %{
-        "GitHub" => "https://github.com/Intellection/chex",
-        "Changelog" => "https://github.com/Intellection/chex/blob/main/CHANGELOG.md"
+        "GitHub" => "https://github.com/Intellection/natch",
+        "Changelog" => "https://github.com/Intellection/natch/blob/main/CHANGELOG.md"
       },
       files:
-        ~w(lib priv native .formatter.exs mix.exs README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md checksum-*.exs)
+        ~w(lib priv native/natch_fine/src native/natch_fine/CMakeLists.txt native/natch_fine/Makefile native/clickhouse-cpp .formatter.exs mix.exs README.md LICENSE THIRD_PARTY_NOTICES.md CHANGELOG.md checksum*.exs)
     ]
   end
 
   defp docs do
     [
-      main: "Chex",
+      main: "Natch",
       extras: ["README.md"]
     ]
   end
@@ -50,7 +50,7 @@ defmodule Chex.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Chex.Application, []}
+      mod: {Natch.Application, []}
     ]
   end
 

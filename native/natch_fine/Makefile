@@ -12,4 +12,4 @@ all:
 
 clean:
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(PRIV_DIR)/chex_fine.*
+	@rm -f $(PRIV_DIR)/natch_fine.*

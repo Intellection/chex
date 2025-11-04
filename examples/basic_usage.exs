@@ -1,4 +1,4 @@
-# Basic usage example for Chex
+# Basic usage example for Natch
 #
 # Start ClickHouse with:
 # docker-compose up -d
@@ -8,7 +8,7 @@
 
 # Start a connection
 {:ok, conn} =
-  Chex.start_link(
+  Natch.start_link(
     url: "http://localhost:8123",
     database: "default",
     compression: true
@@ -28,11 +28,11 @@ CREATE TABLE IF NOT EXISTS users (
 ORDER BY id
 """
 
-:ok = Chex.execute(conn, create_table_sql)
+:ok = Natch.execute(conn, create_table_sql)
 IO.puts("Created users table")
 
 # Insert some data using the single-batch insert API
-{:ok, insert} = Chex.insert(conn, "users")
+{:ok, insert} = Natch.insert(conn, "users")
 
 users = [
   %{
@@ -59,17 +59,17 @@ users = [
 ]
 
 Enum.each(users, fn user ->
-  :ok = Chex.write(insert, user)
+  :ok = Natch.write(insert, user)
 end)
 
-:ok = Chex.end_insert(insert)
+:ok = Natch.end_insert(insert)
 IO.puts("Inserted #{length(users)} users")
 
 # Wait a moment for ClickHouse to process
 Process.sleep(100)
 
 # Query all users
-{:ok, all_users} = Chex.query(conn, "SELECT * FROM users ORDER BY id")
+{:ok, all_users} = Natch.query(conn, "SELECT * FROM users ORDER BY id")
 IO.puts("\nAll users:")
 
 Enum.each(all_users, fn user ->
@@ -77,7 +77,7 @@ Enum.each(all_users, fn user ->
 end)
 
 # Query with parameters
-{:ok, filtered_users} = Chex.query(conn, "SELECT * FROM users WHERE age > ?", [28])
+{:ok, filtered_users} = Natch.query(conn, "SELECT * FROM users WHERE age > ?", [28])
 IO.puts("\nUsers older than 28:")
 
 Enum.each(filtered_users, fn user ->
@@ -88,7 +88,7 @@ end)
 IO.puts("\nStreaming users:")
 
 conn
-|> Chex.stream("SELECT * FROM users ORDER BY id")
+|> Natch.stream("SELECT * FROM users ORDER BY id")
 |> Stream.map(fn user -> "#{user["name"]} <#{user["email"]}>" end)
 |> Enum.each(&IO.puts("  #{&1}"))
 
@@ -104,11 +104,11 @@ CREATE TABLE IF NOT EXISTS events (
 ORDER BY (timestamp, id)
 """
 
-:ok = Chex.execute(conn, create_events_sql)
+:ok = Natch.execute(conn, create_events_sql)
 IO.puts("\nCreated events table")
 
 # Use auto-batching inserter for high-throughput scenarios
-{:ok, inserter} = Chex.inserter(conn, "events", max_rows: 100, period_ms: 1000)
+{:ok, inserter} = Natch.inserter(conn, "events", max_rows: 100, period_ms: 1000)
 
 IO.puts("Inserting 500 events with auto-batching...")
 
@@ -121,11 +121,11 @@ for i <- 1..500 do
     "value" => :rand.uniform() * 100
   }
 
-  :ok = Chex.write_batch(inserter, event)
-  :ok = Chex.commit(inserter)
+  :ok = Natch.write_batch(inserter, event)
+  :ok = Natch.commit(inserter)
 end
 
-:ok = Chex.end_inserter(inserter)
+:ok = Natch.end_inserter(inserter)
 IO.puts("Completed inserting events")
 
 # Wait for processing
@@ -133,7 +133,7 @@ Process.sleep(200)
 
 # Aggregate query
 {:ok, stats} =
-  Chex.query(conn, """
+  Natch.query(conn, """
   SELECT
     event_type,
     count() as count,
@@ -152,10 +152,10 @@ Enum.each(stats, fn stat ->
 end)
 
 # Clean up
-:ok = Chex.execute(conn, "DROP TABLE users")
-:ok = Chex.execute(conn, "DROP TABLE events")
+:ok = Natch.execute(conn, "DROP TABLE users")
+:ok = Natch.execute(conn, "DROP TABLE events")
 IO.puts("\nCleaned up test tables")
 
 # Stop the connection
-:ok = Chex.stop(conn)
+:ok = Natch.stop(conn)
 IO.puts("Disconnected")

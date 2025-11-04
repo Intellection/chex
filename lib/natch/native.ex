@@ -1,11 +1,11 @@
-defmodule Chex.Native do
+defmodule Natch.Native do
   @moduledoc false
   # Private module for FINE NIF declarations
 
   @on_load :load_nifs
 
   def load_nifs do
-    path = :filename.join(:code.priv_dir(:chex), ~c"chex_fine")
+    path = :filename.join(:code.priv_dir(:natch), ~c"natch_fine")
     :ok = :erlang.load_nif(path, 0)
   end
 

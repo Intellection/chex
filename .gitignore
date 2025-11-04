@@ -17,13 +17,13 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-chex-*.tar
+natch-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
 
 # NIF build artifacts
-/native/chex_fine/_build/
+/native/natch_fine/_build/
 /priv/*.so
 /priv/*.dylib
 

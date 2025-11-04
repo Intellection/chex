@@ -1,5 +1,5 @@
-defmodule Chex.DocTest do
+defmodule Natch.DocTest do
   use ExUnit.Case, async: true
 
-  doctest Chex.Conversion
+  doctest Natch.Conversion
 end

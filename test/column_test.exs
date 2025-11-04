@@ -1,7 +1,7 @@
-defmodule Chex.ColumnTest do
+defmodule Natch.ColumnTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Column
+  alias Natch.Column
 
   describe "Column creation" do
     test "can create UInt64 column" do

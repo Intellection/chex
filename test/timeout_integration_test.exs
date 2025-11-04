@@ -1,4 +1,4 @@
-defmodule Chex.TimeoutIntegrationTest do
+defmodule Natch.TimeoutIntegrationTest do
   use ExUnit.Case, async: false
   @moduletag :integration
   import ExUnit.CaptureLog
@@ -7,14 +7,14 @@ defmodule Chex.TimeoutIntegrationTest do
     test "query completes when within timeout" do
       # Start connection with 10 second recv timeout
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000,
           recv_timeout: 10_000
         )
 
       # Quick query should succeed
-      assert {:ok, _rows} = Chex.Connection.select_rows(conn, "SELECT 1")
+      assert {:ok, _rows} = Natch.Connection.select_rows(conn, "SELECT 1")
 
       GenServer.stop(conn)
     end
@@ -24,14 +24,14 @@ defmodule Chex.TimeoutIntegrationTest do
       # This test just verifies recv_timeout can be set without errors
       # Actually triggering a recv timeout reliably is difficult in a test environment
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000,
           recv_timeout: 5_000
         )
 
       # Basic operation should work
-      assert {:ok, _rows} = Chex.Connection.select_rows(conn, "SELECT 1")
+      assert {:ok, _rows} = Natch.Connection.select_rows(conn, "SELECT 1")
 
       GenServer.stop(conn)
     end
@@ -39,13 +39,13 @@ defmodule Chex.TimeoutIntegrationTest do
     test "default recv_timeout of 0 allows long queries" do
       # Start connection with default timeout (0 = infinite)
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000
         )
 
       # Query should complete without timeout concerns
-      assert {:ok, _rows} = Chex.Connection.select_rows(conn, "SELECT sleep(1)")
+      assert {:ok, _rows} = Natch.Connection.select_rows(conn, "SELECT sleep(1)")
 
       GenServer.stop(conn)
     end
@@ -65,7 +65,7 @@ defmodule Chex.TimeoutIntegrationTest do
         Process.flag(:trap_exit, true)
 
         result =
-          Chex.Connection.start_link(
+          Natch.Connection.start_link(
             host: "192.0.2.1",
             port: 9000,
             connect_timeout: 1_000
@@ -86,7 +86,7 @@ defmodule Chex.TimeoutIntegrationTest do
     test "connection succeeds with sufficient timeout" do
       # Normal connection with default timeout should work
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000,
           connect_timeout: 5_000
@@ -102,14 +102,14 @@ defmodule Chex.TimeoutIntegrationTest do
       # send_timeout is hard to test without large data transfers
       # but we can verify it can be set without errors
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000,
           send_timeout: 10_000
         )
 
       # Basic operation should work
-      assert :ok = Chex.Connection.ping(conn)
+      assert :ok = Natch.Connection.ping(conn)
 
       GenServer.stop(conn)
     end
@@ -118,7 +118,7 @@ defmodule Chex.TimeoutIntegrationTest do
   describe "timeout configuration" do
     test "all timeouts can be configured together" do
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000,
           connect_timeout: 5_000,
@@ -127,7 +127,7 @@ defmodule Chex.TimeoutIntegrationTest do
         )
 
       assert is_pid(conn)
-      assert :ok = Chex.Connection.ping(conn)
+      assert :ok = Natch.Connection.ping(conn)
 
       GenServer.stop(conn)
     end
@@ -135,13 +135,13 @@ defmodule Chex.TimeoutIntegrationTest do
     test "default timeout values work correctly" do
       # Default: connect_timeout=5000, recv_timeout=0, send_timeout=0
       {:ok, conn} =
-        Chex.Connection.start_link(
+        Natch.Connection.start_link(
           host: "localhost",
           port: 9000
         )
 
       assert is_pid(conn)
-      assert :ok = Chex.Connection.ping(conn)
+      assert :ok = Natch.Connection.ping(conn)
 
       GenServer.stop(conn)
     end

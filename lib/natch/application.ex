@@ -1,4 +1,4 @@
-defmodule Chex.Application do
+defmodule Natch.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -8,13 +8,13 @@ defmodule Chex.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: Chex.Worker.start_link(arg)
-      # {Chex.Worker, arg}
+      # Starts a worker by calling: Natch.Worker.start_link(arg)
+      # {Natch.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Chex.Supervisor]
+    opts = [strategy: :one_for_one, name: Natch.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

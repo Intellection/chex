@@ -1,20 +1,20 @@
-defmodule Chex.BlockTest do
+defmodule Natch.BlockTest do
   use ExUnit.Case, async: true
 
-  alias Chex.{Block, Native}
+  alias Natch.{Block, Native}
 
   setup do
     # Generate unique table name for this test
     table = "test_#{System.unique_integer([:positive, :monotonic])}_#{:rand.uniform(999_999)}"
 
     # Start connection
-    {:ok, conn} = Chex.Connection.start_link(host: "localhost", port: 9000)
+    {:ok, conn} = Natch.Connection.start_link(host: "localhost", port: 9000)
 
     on_exit(fn ->
       # Clean up test table if it exists
       if Process.alive?(conn) do
         try do
-          Chex.Connection.execute(conn, "DROP TABLE IF EXISTS #{table}")
+          Natch.Connection.execute(conn, "DROP TABLE IF EXISTS #{table}")
         catch
           :exit, _ -> :ok
         end
@@ -37,8 +37,8 @@ defmodule Chex.BlockTest do
 
     test "can append column to block" do
       block = Native.block_create()
-      col = Chex.Column.new(:uint64)
-      Chex.Column.append_bulk(col, [1, 2])
+      col = Natch.Column.new(:uint64)
+      Natch.Column.append_bulk(col, [1, 2])
 
       Native.block_append_column(block, "id", col.ref)
 
@@ -49,11 +49,11 @@ defmodule Chex.BlockTest do
     test "can append multiple columns to block" do
       block = Native.block_create()
 
-      col1 = Chex.Column.new(:uint64)
-      Chex.Column.append_bulk(col1, [1, 2])
+      col1 = Natch.Column.new(:uint64)
+      Natch.Column.append_bulk(col1, [1, 2])
 
-      col2 = Chex.Column.new(:string)
-      Chex.Column.append_bulk(col2, ["first", "second"])
+      col2 = Natch.Column.new(:string)
+      Natch.Column.append_bulk(col2, ["first", "second"])
 
       Native.block_append_column(block, "id", col1.ref)
       Native.block_append_column(block, "name", col2.ref)
@@ -126,7 +126,7 @@ defmodule Chex.BlockTest do
   describe "INSERT operations" do
     test "can insert single row", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         name String
@@ -137,12 +137,12 @@ defmodule Chex.BlockTest do
       schema = [id: :uint64, name: :string]
       columns = %{id: [1], name: ["Alice"]}
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
     end
 
     test "can insert multiple rows", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         name String,
@@ -159,12 +159,12 @@ defmodule Chex.BlockTest do
         amount: [100.5, 200.75, 300.25]
       }
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
     end
 
     test "can insert with all supported types", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         value Int64,
@@ -191,12 +191,12 @@ defmodule Chex.BlockTest do
         created_at: [~U[2024-10-29 10:00:00Z], ~U[2024-10-29 11:00:00Z]]
       }
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
     end
 
     test "can insert large batch", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         value UInt64
@@ -211,12 +211,12 @@ defmodule Chex.BlockTest do
 
       schema = [id: :uint64, value: :uint64]
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
     end
 
     test "can insert with string keys in columns", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         name String
@@ -227,14 +227,14 @@ defmodule Chex.BlockTest do
       schema = [id: :uint64, name: :string]
       columns = %{"id" => [1], "name" => ["Alice"]}
 
-      assert :ok = Chex.insert(conn, "#{table}", columns, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns, schema)
     end
 
     test "returns error for invalid table", %{conn: conn, table: _table} do
       schema = [id: :uint64]
       columns = %{id: [1]}
 
-      result = Chex.insert(conn, "nonexistent_table", columns, schema)
+      result = Natch.insert(conn, "nonexistent_table", columns, schema)
       assert {:error, _reason} = result
     end
   end
@@ -247,7 +247,7 @@ defmodule Chex.BlockTest do
       schema = [id: :uint64, name: :string]
       columns = %{id: [1, 2, 3], name: ["Alice", "Bob"]}
 
-      assert_raise Chex.ValidationError,
+      assert_raise Natch.ValidationError,
                    ~r/all columns in block must have same count of rows/,
                    fn ->
                      Block.build_block(columns, schema)
@@ -398,7 +398,7 @@ defmodule Chex.BlockTest do
   describe "Multiple sequential inserts" do
     test "can insert multiple batches", %{conn: conn, table: table} do
       # Create table
-      Chex.Connection.execute(conn, """
+      Natch.Connection.execute(conn, """
       CREATE TABLE #{table} (
         id UInt64,
         batch UInt64
@@ -409,15 +409,15 @@ defmodule Chex.BlockTest do
 
       # First batch
       columns1 = %{id: [1, 2], batch: [1, 1]}
-      assert :ok = Chex.insert(conn, "#{table}", columns1, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns1, schema)
 
       # Second batch
       columns2 = %{id: [3, 4], batch: [2, 2]}
-      assert :ok = Chex.insert(conn, "#{table}", columns2, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns2, schema)
 
       # Third batch
       columns3 = %{id: [5], batch: [3]}
-      assert :ok = Chex.insert(conn, "#{table}", columns3, schema)
+      assert :ok = Natch.insert(conn, "#{table}", columns3, schema)
     end
   end
 end

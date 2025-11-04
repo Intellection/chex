@@ -1,4 +1,4 @@
-defmodule Chex.Connection do
+defmodule Natch.Connection do
   @moduledoc """
   GenServer that manages a ClickHouse client connection via native TCP protocol.
 
@@ -27,13 +27,13 @@ defmodule Chex.Connection do
   **Important:** The default `recv_timeout` of 0 means queries can run indefinitely.
   For production use, consider setting explicit timeouts:
 
-      {:ok, conn} = Chex.Connection.start_link(
+      {:ok, conn} = Natch.Connection.start_link(
         host: "localhost",
         recv_timeout: 60_000,  # 60 seconds
         send_timeout: 60_000   # 60 seconds
       )
 
-  When a timeout occurs, a `Chex.ConnectionError` is raised.
+  When a timeout occurs, a `Natch.ConnectionError` is raised.
 
   ## SSL/TLS Support
 
@@ -47,13 +47,13 @@ defmodule Chex.Connection do
   ## Examples
 
       # Local non-SSL connection
-      {:ok, conn} = Chex.Connection.start_link(
+      {:ok, conn} = Natch.Connection.start_link(
         host: "localhost",
         port: 9000
       )
 
       # ClickHouse Cloud SSL connection
-      {:ok, conn} = Chex.Connection.start_link(
+      {:ok, conn} = Natch.Connection.start_link(
         host: "example.clickhouse.cloud",
         port: 9440,
         user: "default",
@@ -63,7 +63,7 @@ defmodule Chex.Connection do
   """
 
   use GenServer
-  alias Chex.Native
+  alias Natch.Native
 
   @type option ::
           {:host, String.t()}
@@ -83,7 +83,7 @@ defmodule Chex.Connection do
 
   ## Examples
 
-      {:ok, conn} = Chex.Connection.start_link(
+      {:ok, conn} = Natch.Connection.start_link(
         host: "localhost",
         port: 9000,
         database: "default",
@@ -135,7 +135,7 @@ defmodule Chex.Connection do
 
   ## Examples
 
-      {:ok, rows} = Chex.Connection.select_rows(conn, "SELECT id, name FROM users")
+      {:ok, rows} = Natch.Connection.select_rows(conn, "SELECT id, name FROM users")
       # => {:ok, [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]}
 
   """
@@ -153,7 +153,7 @@ defmodule Chex.Connection do
 
   ## Examples
 
-      {:ok, cols} = Chex.Connection.select_cols(conn, "SELECT id, name FROM users")
+      {:ok, cols} = Natch.Connection.select_cols(conn, "SELECT id, name FROM users")
       # => {:ok, %{id: [1, 2], name: ["Alice", "Bob"]}}
 
   """
@@ -209,7 +209,7 @@ defmodule Chex.Connection do
   def handle_call({:insert, table, columns, schema}, _from, state) do
     try do
       # Build block from columnar data
-      block = Chex.Block.build_block(columns, schema)
+      block = Natch.Block.build_block(columns, schema)
 
       # Insert block
       Native.client_insert(state.client, table, block)
@@ -248,11 +248,11 @@ defmodule Chex.Connection do
 
   # Delegate to shared error handling
   defp handle_error(exception_struct) do
-    Chex.Error.handle_nif_error(exception_struct)
+    Natch.Error.handle_nif_error(exception_struct)
   end
 
   defp error_tuple(exception_struct) do
-    Chex.Error.handle_callback_error(exception_struct)
+    Natch.Error.handle_callback_error(exception_struct)
   end
 
   defp build_client(opts) do

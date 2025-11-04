@@ -1,4 +1,4 @@
-# Chex: FINE Wrapper Implementation Plan
+# Natch: FINE Wrapper Implementation Plan
 
 **Last Updated:** 2025-11-01
 **Status:** ✅ Phases 1-5 Complete + Phase 6 Timeout Support
@@ -32,13 +32,13 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
 ```
 ┌─────────────────────────────────────────────┐
 │  Elixir Application                         │
-│  - Chex.query/3, Chex.insert/3             │
+│  - Natch.query/3, Natch.insert/3             │
 │  - Idiomatic Elixir API                     │
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
 │  Elixir Management Layer                    │
-│  - Chex.Connection GenServer                │
+│  - Natch.Connection GenServer                │
 │  - Connection pooling                       │
 │  - Resource lifecycle                       │
 └─────────────────────────────────────────────┘
@@ -76,11 +76,11 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
    - Add FINE dependency to mix.exs
    - Set up C++ build infrastructure (CMake/Makefile)
    - Configure clickhouse-cpp as git submodule or vendored dependency
-   - Create `native/chex_fine/` directory structure
+   - Create `native/natch_fine/` directory structure
 
 2. **Client Resource Wrapper**
    ```cpp
-   // native/chex_fine/client.cpp
+   // native/natch_fine/client.cpp
    #include <fine.hpp>
    #include <clickhouse/client.h>
 
@@ -114,12 +114,12 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
    }
    FINE_NIF(client_execute, 0);
 
-   FINE_INIT("Elixir.Chex.Native");
+   FINE_INIT("Elixir.Natch.Native");
    ```
 
 3. **Elixir Connection Module**
    ```elixir
-   defmodule Chex.Connection do
+   defmodule Natch.Connection do
      use GenServer
 
      def start_link(opts) do
@@ -130,7 +130,7 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
        host = Keyword.get(opts, :host, "localhost")
        port = Keyword.get(opts, :port, 9000)
 
-       case Chex.Native.client_create(host, port) do
+       case Natch.Native.client_create(host, port) do
          {:ok, client} ->
            {:ok, %{client: client, opts: opts}}
          {:error, reason} ->
@@ -147,12 +147,12 @@ This document outlines a plan to wrap the clickhouse-cpp library using FINE (For
      end
 
      def handle_call(:ping, _from, state) do
-       Chex.Native.client_ping(state.client)
+       Natch.Native.client_ping(state.client)
        {:reply, :ok, state}
      end
 
      def handle_call({:execute, sql}, _from, state) do
-       case Chex.Native.client_execute(state.client, sql) do
+       case Natch.Native.client_execute(state.client, sql) do
          :ok -> {:reply, :ok, state}
          {:error, reason} -> {:reply, {:error, reason}, state}
        end
@@ -185,7 +185,7 @@ ClickHouse has 42+ column types. We need to:
 ### Approach: Leverage clickhouse-cpp's Factory
 
 ```cpp
-// native/chex_fine/columns.cpp
+// native/natch_fine/columns.cpp
 #include <fine.hpp>
 #include <clickhouse/columns/factory.h>
 
@@ -261,17 +261,17 @@ void column_append_value(
 
 3. **Column Builders in Elixir**
    ```elixir
-   defmodule Chex.Column do
+   defmodule Natch.Column do
      def new(type) do
-       Chex.Native.column_create(type)
+       Natch.Native.column_create(type)
      end
 
      def append(%{type: :uint64} = col, value) when is_integer(value) do
-       Chex.Native.column_uint64_append(col.ref, value)
+       Natch.Native.column_uint64_append(col.ref, value)
      end
 
      def append(%{type: :string} = col, value) when is_binary(value) do
-       Chex.Native.column_string_append(col.ref, value)
+       Natch.Native.column_string_append(col.ref, value)
      end
    end
    ```
@@ -293,7 +293,7 @@ void column_append_value(
 ### Block Resource
 
 ```cpp
-// native/chex_fine/block.cpp
+// native/natch_fine/block.cpp
 #include <fine.hpp>
 #include <clickhouse/block.h>
 
@@ -357,26 +357,26 @@ void block_append_column(
 ### Elixir Builder Pattern
 
 ```elixir
-defmodule Chex.Insert do
+defmodule Natch.Insert do
   def build_block(table_schema, rows) do
-    block = Chex.Native.block_create()
+    block = Natch.Native.block_create()
 
     # Create columns based on schema
     columns = for {name, type} <- table_schema do
-      {name, Chex.Column.new(type)}
+      {name, Natch.Column.new(type)}
     end
 
     # Populate columns from rows
     for row <- rows do
       for {name, col} <- columns do
         value = Map.get(row, name)
-        Chex.Column.append(col, value)
+        Natch.Column.append(col, value)
       end
     end
 
     # Attach columns to block
     for {name, col} <- columns do
-      Chex.Native.block_append_column(block, to_string(name), col.ref)
+      Natch.Native.block_append_column(block, to_string(name), col.ref)
     end
 
     block
@@ -401,14 +401,14 @@ schema = [
   {:amount, :float64}
 ]
 
-Chex.Insert.insert(conn, "test_table", rows, schema)
+Natch.Insert.insert(conn, "test_table", rows, schema)
 ```
 
 **B. Schema Introspection (Phase 4)**
 ```elixir
 # Query ClickHouse for table schema
-schema = Chex.get_table_schema(conn, "test_table")
-Chex.Insert.insert(conn, "test_table", rows, schema)
+schema = Natch.get_table_schema(conn, "test_table")
+Natch.Insert.insert(conn, "test_table", rows, schema)
 ```
 
 ### Testing
@@ -439,7 +439,7 @@ We need to bridge this to Elixir.
 ### Approach: Accumulate Results
 
 ```cpp
-// native/chex_fine/select.cpp
+// native/natch_fine/select.cpp
 std::vector<fine::ResourcePtr<clickhouse::Block>> client_select(
     ErlNifEnv *env,
     fine::ResourcePtr<clickhouse::Client> client,
@@ -461,7 +461,7 @@ FINE_NIF(client_select, 0);
 ### Block to Elixir Conversion
 
 ```cpp
-// native/chex_fine/convert.cpp
+// native/natch_fine/convert.cpp
 std::vector<std::map<std::string, ElixirValue>> block_to_maps(
     ErlNifEnv *env,
     fine::ResourcePtr<clickhouse::Block> block) {
@@ -514,12 +514,12 @@ ElixirValue extract_value(
 ### Elixir Query API
 
 ```elixir
-defmodule Chex do
+defmodule Natch do
   def query(conn, sql) do
     case GenServer.call(conn, {:select, sql}, :infinity) do
       {:ok, blocks} ->
         rows = blocks
-        |> Enum.flat_map(&Chex.Native.block_to_maps/1)
+        |> Enum.flat_map(&Natch.Native.block_to_maps/1)
         {:ok, rows}
       error ->
         error
@@ -564,7 +564,7 @@ rows = [
   %{id: 2, name: "Bob", value: 200.0},
   # ... 100 rows
 ]
-Chex.insert(conn, "table", rows, schema)  # 100 rows × 100 columns = 10,000 NIF calls!
+Natch.insert(conn, "table", rows, schema)  # 100 rows × 100 columns = 10,000 NIF calls!
 ```
 
 **Performance Analysis:**
@@ -606,7 +606,7 @@ schema = [
   timestamp: :datetime
 ]
 
-Chex.insert(conn, "events", columns, schema)
+Natch.insert(conn, "events", columns, schema)
 # Only 4 NIF calls (1 per column) for ANY number of rows!
 ```
 
@@ -649,7 +649,7 @@ For users with row-oriented data sources:
 
 ```elixir
 # Helper module for format conversion
-defmodule Chex.Conversion do
+defmodule Natch.Conversion do
   def rows_to_columns(rows, schema) do
     # Transpose row-oriented to column-oriented
     for {name, _type} <- schema, into: %{} do
@@ -665,13 +665,13 @@ end
 
 # Usage
 rows = [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]
-columns = Chex.Conversion.rows_to_columns(rows, schema)
-Chex.insert(conn, "users", columns, schema)
+columns = Natch.Conversion.rows_to_columns(rows, schema)
+Natch.insert(conn, "users", columns, schema)
 ```
 
-**Type Safety:** Validation happens automatically in `Chex.Column.append_bulk/2` and FINE NIFs during block building. No explicit validation calls needed - type errors are caught with helpful error messages, and FINE ensures the VM never crashes.
+**Type Safety:** Validation happens automatically in `Natch.Column.append_bulk/2` and FINE NIFs during block building. No explicit validation calls needed - type errors are caught with helpful error messages, and FINE ensures the VM never crashes.
 
-**Note:** Streaming insert support was removed. For large datasets, use `Chex.insert/4` directly as clickhouse-cpp handles wire-level chunking (64KB compression blocks) automatically. Users can chunk data in their own code before calling `Chex.insert/4` if needed for memory management.
+**Note:** Streaming insert support was removed. For large datasets, use `Natch.insert/4` directly as clickhouse-cpp handles wire-level chunking (64KB compression blocks) automatically. Users can chunk data in their own code before calling `Natch.insert/4` if needed for memory management.
 
 ### ✅ Additional Column Types (Phase 5C-D - Complete!)
 
@@ -819,10 +819,10 @@ df = Explorer.DataFrame.new(
 )
 
 # Schema inference from DataFrame types
-Chex.insert(conn, "events", df)
+Natch.insert(conn, "events", df)
 
 # Or explicit schema
-Chex.insert(conn, "events", df, schema: [id: :uint64, name: :string, amount: :float64])
+Natch.insert(conn, "events", df, schema: [id: :uint64, name: :string, amount: :float64])
 ```
 
 **Implementation Notes:**
@@ -840,23 +840,23 @@ Chex.insert(conn, "events", df, schema: [id: :uint64, name: :string, amount: :fl
 ### Breaking Changes
 
 **API Changes:**
-- `Chex.insert/4` now expects columnar format (map of lists), not row format (list of maps)
-- `Chex.Column.append/2` removed, replaced with `append_bulk/2`
+- `Natch.insert/4` now expects columnar format (map of lists), not row format (list of maps)
+- `Natch.Column.append/2` removed, replaced with `append_bulk/2`
 - Single-value append NIFs removed (bulk operations only)
 
 **Migration:**
 ```elixir
 # Before (Phases 1-4)
 rows = [%{id: 1, name: "Alice"}, %{id: 2, name: "Bob"}]
-Chex.insert(conn, "users", rows, schema)
+Natch.insert(conn, "users", rows, schema)
 
 # After (Phase 5+)
 columns = %{id: [1, 2], name: ["Alice", "Bob"]}
-Chex.insert(conn, "users", columns, schema)
+Natch.insert(conn, "users", columns, schema)
 
 # Or use conversion helper
-columns = Chex.Conversion.rows_to_columns(rows, schema)
-Chex.insert(conn, "users", columns, schema)
+columns = Natch.Conversion.rows_to_columns(rows, schema)
+Natch.insert(conn, "users", columns, schema)
 ```
 
 ### Connection Options & Production Features
@@ -886,7 +886,7 @@ Support full ClientOptions:
 Added three configurable socket-level timeout options to prevent operations from hanging indefinitely:
 
 ```elixir
-{:ok, conn} = Chex.Connection.start_link(
+{:ok, conn} = Natch.Connection.start_link(
   host: "localhost",
   port: 9000,
   connect_timeout: 5_000,   # TCP connection establishment (default: 5000ms)
@@ -899,13 +899,13 @@ Added three configurable socket-level timeout options to prevent operations from
 - **Three timeout types**: connect, recv, send (all in milliseconds)
 - **Conservative defaults**: Match clickhouse-cpp library (5000ms, 0ms, 0ms)
 - **Infinite by default**: recv_timeout=0 allows long-running analytical queries
-- **Consistent errors**: Timeouts raise `Chex.ConnectionError` with descriptive messages
+- **Consistent errors**: Timeouts raise `Natch.ConnectionError` with descriptive messages
 - **Integration tests**: 8 tests marked with `:integration` tag, excluded by default
 
 **Files Modified:**
-- `lib/chex/connection.ex`: Added timeout options to type spec, moduledoc, and build_client/1
-- `lib/chex/native.ex`: Updated client_create/10 signature (was 7 params, now 10)
-- `native/chex_fine/src/minimal.cpp`: Added 3 uint64_t timeout params and ClientOptions setters
+- `lib/natch/connection.ex`: Added timeout options to type spec, moduledoc, and build_client/1
+- `lib/natch/native.ex`: Updated client_create/10 signature (was 7 params, now 10)
+- `native/natch_fine/src/minimal.cpp`: Added 3 uint64_t timeout params and ClientOptions setters
 - `test/timeout_integration_test.exs`: Created integration test suite
 - `test/test_helper.exs`: Added `:integration` to excluded tags
 - `README.md`: Added "Timeout Configuration" section
@@ -988,7 +988,7 @@ Current API requires string concatenation for dynamic queries, which is:
 ```elixir
 # Current - Unsafe!
 user_input = "'; DROP TABLE users; --"
-Chex.query(conn, "SELECT * FROM users WHERE name = '#{user_input}'")
+Natch.query(conn, "SELECT * FROM users WHERE name = '#{user_input}'")
 ```
 
 **Solution: Leverage clickhouse-cpp Query API**
@@ -1007,7 +1007,7 @@ client->Select(query);
 
 1. **C++ NIF for Query Building**
 ```cpp
-// native/chex_fine/src/query.cpp
+// native/natch_fine/src/query.cpp
 #include <clickhouse/query.h>
 
 FINE_RESOURCE(clickhouse::Query);
@@ -1061,7 +1061,7 @@ FINE_NIF(client_select_parameterized, 0);
 2. **Elixir Query Builder API**
 
 ```elixir
-defmodule Chex.Query do
+defmodule Natch.Query do
   @moduledoc """
   Type-safe parameterized query builder.
   """
@@ -1073,13 +1073,13 @@ defmodule Chex.Query do
 
   ## Examples
 
-      iex> query = Chex.Query.new("SELECT * FROM users WHERE id = {id:UInt64}")
-      iex> query = Chex.Query.bind(query, :id, 42)
-      iex> Chex.Connection.select(conn, query)
+      iex> query = Natch.Query.new("SELECT * FROM users WHERE id = {id:UInt64}")
+      iex> query = Natch.Query.bind(query, :id, 42)
+      iex> Natch.Connection.select(conn, query)
       {:ok, [%{"id" => 42, "name" => "Alice"}]}
   """
   def new(sql) when is_binary(sql) do
-    case Chex.Native.query_create(sql) do
+    case Natch.Native.query_create(sql) do
       {:ok, ref} ->
         %__MODULE__{sql: sql, params: %{}, ref: ref}
       {:error, reason} ->
@@ -1102,19 +1102,19 @@ defmodule Chex.Query do
   end
 
   defp bind_value(ref, name, value) when is_integer(value) and value >= 0 do
-    Chex.Native.query_bind_uint64(ref, name, value)
+    Natch.Native.query_bind_uint64(ref, name, value)
   end
 
   defp bind_value(ref, name, value) when is_integer(value) do
-    Chex.Native.query_bind_int64(ref, name, value)
+    Natch.Native.query_bind_int64(ref, name, value)
   end
 
   defp bind_value(ref, name, value) when is_binary(value) do
-    Chex.Native.query_bind_string(ref, name, value)
+    Natch.Native.query_bind_string(ref, name, value)
   end
 
   defp bind_value(ref, name, value) when is_float(value) do
-    Chex.Native.query_bind_float64(ref, name, value)
+    Natch.Native.query_bind_float64(ref, name, value)
   end
 
   defp bind_value(_ref, _name, value) do
@@ -1123,22 +1123,22 @@ defmodule Chex.Query do
 end
 
 # Update Connection module
-defmodule Chex.Connection do
+defmodule Natch.Connection do
   # ... existing code ...
 
   @doc """
   Execute a parameterized query.
   """
-  def select(conn, %Chex.Query{} = query) do
+  def select(conn, %Natch.Query{} = query) do
     GenServer.call(conn, {:select_parameterized, query}, :infinity)
   end
 
   # ... existing select/2 for string queries remains ...
 
   def handle_call({:select_parameterized, query}, _from, state) do
-    case Chex.Native.client_select_parameterized(state.client, query.ref) do
+    case Natch.Native.client_select_parameterized(state.client, query.ref) do
       {:ok, blocks} ->
-        rows = Enum.flat_map(blocks, &Chex.Native.block_to_maps/1)
+        rows = Enum.flat_map(blocks, &Natch.Native.block_to_maps/1)
         {:reply, {:ok, rows}, state}
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -1151,29 +1151,29 @@ end
 
 ```elixir
 # Safe parameterized query
-query = Chex.Query.new("SELECT * FROM users WHERE id = {id:UInt64}")
-|> Chex.Query.bind(:id, 42)
+query = Natch.Query.new("SELECT * FROM users WHERE id = {id:UInt64}")
+|> Natch.Query.bind(:id, 42)
 
-{:ok, results} = Chex.Connection.select(conn, query)
+{:ok, results} = Natch.Connection.select(conn, query)
 
 # Multiple parameters
-query = Chex.Query.new("""
+query = Natch.Query.new("""
   SELECT * FROM events
   WHERE user_id = {user_id:UInt64}
   AND timestamp > {start:DateTime}
   AND status = {status:String}
 """)
-|> Chex.Query.bind(:user_id, 123)
-|> Chex.Query.bind(:start, ~U[2024-01-01 00:00:00Z])
-|> Chex.Query.bind(:status, "active")
+|> Natch.Query.bind(:user_id, 123)
+|> Natch.Query.bind(:start, ~U[2024-01-01 00:00:00Z])
+|> Natch.Query.bind(:status, "active")
 
-{:ok, results} = Chex.Connection.select(conn, query)
+{:ok, results} = Natch.Connection.select(conn, query)
 
 # Pipe-friendly
 ~U[2024-01-01 00:00:00Z]
-|> Chex.Query.new("SELECT COUNT(*) FROM events WHERE timestamp > {ts:DateTime}")
-|> Chex.Query.bind(:ts, start_time)
-|> then(&Chex.Connection.select(conn, &1))
+|> Natch.Query.new("SELECT COUNT(*) FROM events WHERE timestamp > {ts:DateTime}")
+|> Natch.Query.bind(:ts, start_time)
+|> then(&Natch.Connection.select(conn, &1))
 ```
 
 **Research Needed:**
@@ -1257,7 +1257,7 @@ Support multiple queries in a single transaction or batch.
 **Status:** ❌ Will not implement
 **Reason:** Per user feedback - "I don't think Ecto is a good fit. We should never do this."
 
-ClickHouse is an OLAP database optimized for analytics, not OLTP. Ecto's schema-based approach and transaction model don't align well with ClickHouse's use cases. Users should use Chex's direct query interface instead.
+ClickHouse is an OLAP database optimized for analytics, not OLTP. Ecto's schema-based approach and transaction model don't align well with ClickHouse's use cases. Users should use Natch's direct query interface instead.
 
 ---
 
@@ -1372,16 +1372,16 @@ ERL_NIF_TERM column_string_get_binary(
 ### Directory Structure
 
 ```
-chex/
+natch/
 ├── lib/
-│   ├── chex.ex                 # Public API
-│   ├── chex/
+│   ├── natch.ex                 # Public API
+│   ├── natch/
 │   │   ├── connection.ex       # GenServer
 │   │   ├── native.ex          # NIF declarations (minimal)
 │   │   ├── column.ex          # Column builders
 │   │   └── insert.ex          # Insert helpers
 ├── native/
-│   └── chex_fine/
+│   └── natch_fine/
 │       ├── CMakeLists.txt     # Build config
 │       ├── Makefile           # Mix integration
 │       ├── src/
@@ -1392,7 +1392,7 @@ chex/
 │       │   └── convert.cpp    # Type conversions
 │       └── clickhouse-cpp/    # Git submodule or vendored
 ├── test/
-│   ├── chex_test.exs
+│   ├── natch_test.exs
 │   └── integration_test.exs
 ├── mix.exs
 └── README.md
@@ -1402,7 +1402,7 @@ chex/
 
 ```cmake
 cmake_minimum_required(VERSION 3.15)
-project(chex_fine)
+project(natch_fine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1414,7 +1414,7 @@ find_package(fine REQUIRED)
 add_subdirectory(clickhouse-cpp)
 
 # Build NIF shared library
-add_library(chex_fine SHARED
+add_library(natch_fine SHARED
   src/client.cpp
   src/block.cpp
   src/column.cpp
@@ -1422,20 +1422,20 @@ add_library(chex_fine SHARED
   src/convert.cpp
 )
 
-target_link_libraries(chex_fine
+target_link_libraries(natch_fine
   PRIVATE
     fine::fine
     clickhouse-cpp-lib
 )
 
 # Set visibility
-set_target_properties(chex_fine PROPERTIES
+set_target_properties(natch_fine PROPERTIES
   CXX_VISIBILITY_PRESET hidden
   PREFIX ""
 )
 
 # Output to priv/
-set_target_properties(chex_fine PROPERTIES
+set_target_properties(natch_fine PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../../priv
 )
 ```
@@ -1450,23 +1450,23 @@ BUILD_DIR = _build/$(MIX_ENV)
 
 all:
 	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake ../../native/chex_fine
+	@cd $(BUILD_DIR) && cmake ../../native/natch_fine
 	@cmake --build $(BUILD_DIR)
 
 clean:
 	@rm -rf $(BUILD_DIR)
-	@rm -rf ../../priv/chex_fine.*
+	@rm -rf ../../priv/natch_fine.*
 ```
 
 ### mix.exs
 
 ```elixir
-defmodule Chex.MixProject do
+defmodule Natch.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :chex,
+      app: :natch,
       version: "0.2.0",
       elixir: "~> 1.18",
       compilers: [:elixir_make] ++ Mix.compilers(),
@@ -1497,25 +1497,25 @@ end
 ### Unit Tests (per Phase)
 
 ```elixir
-defmodule Chex.ConnectionTest do
+defmodule Natch.ConnectionTest do
   use ExUnit.Case
 
   setup do
-    {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
+    {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
 
     on_exit(fn ->
-      Chex.stop(conn)
+      Natch.stop(conn)
     end)
 
     {:ok, conn: conn}
   end
 
   test "ping", %{conn: conn} do
-    assert :ok = Chex.ping(conn)
+    assert :ok = Natch.ping(conn)
   end
 
   test "execute DDL", %{conn: conn} do
-    assert :ok = Chex.execute(conn, """
+    assert :ok = Natch.execute(conn, """
       CREATE TABLE IF NOT EXISTS test (
         id UInt64,
         name String
@@ -1528,7 +1528,7 @@ end
 ### Integration Tests
 
 ```elixir
-defmodule Chex.IntegrationTest do
+defmodule Natch.IntegrationTest do
   use ExUnit.Case
 
   @moduletag :integration
@@ -1546,10 +1546,10 @@ defmodule Chex.IntegrationTest do
   end
 
   test "full insert and select cycle" do
-    {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
+    {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
 
     # Create table
-    Chex.execute(conn, """
+    Natch.execute(conn, """
       CREATE TABLE test (
         id UInt64,
         name String,
@@ -1565,10 +1565,10 @@ defmodule Chex.IntegrationTest do
     }
 
     schema = [id: :uint64, name: :string, amount: :float64]
-    :ok = Chex.insert(conn, "test", columns, schema)
+    :ok = Natch.insert(conn, "test", columns, schema)
 
     # Query back
-    {:ok, results} = Chex.query(conn, "SELECT * FROM test ORDER BY id")
+    {:ok, results} = Natch.query(conn, "SELECT * FROM test ORDER BY id")
 
     assert length(results) == 2
     assert hd(results).name == "Alice"
@@ -1579,12 +1579,12 @@ end
 ### Performance Benchmarks
 
 ```elixir
-defmodule Chex.BenchmarkTest do
+defmodule Natch.BenchmarkTest do
   use ExUnit.Case
 
   @tag :benchmark
   test "bulk insert performance" do
-    {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
+    {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
 
     # Generate 100k rows
     rows = for i <- 1..100_000 do
@@ -1594,7 +1594,7 @@ defmodule Chex.BenchmarkTest do
     schema = [id: :uint64, value: :uint64]
 
     {time_us, :ok} = :timer.tc(fn ->
-      Chex.insert(conn, "benchmark", rows, schema)
+      Natch.insert(conn, "benchmark", rows, schema)
     end)
 
     rows_per_sec = 100_000 / (time_us / 1_000_000)
@@ -1986,7 +1986,7 @@ With MVP achieved (Phases 1-4 complete), all advanced types complete (Phase 5A-G
 
 This example demonstrates the absolute minimum code needed to verify FINE + clickhouse-cpp works:
 
-### native/chex_fine/minimal.cpp
+### native/natch_fine/minimal.cpp
 ```cpp
 #include <fine.hpp>
 #include <clickhouse/client.h>
@@ -2013,12 +2013,12 @@ std::string ping(ErlNifEnv *env, fine::ResourcePtr<Client> client) {
 }
 FINE_NIF(ping, 0);
 
-FINE_INIT("Elixir.ChexMinimal");
+FINE_INIT("Elixir.NatchMinimal");
 ```
 
-### lib/chex_minimal.ex
+### lib/natch_minimal.ex
 ```elixir
-defmodule ChexMinimal do
+defmodule NatchMinimal do
   @moduledoc """
   Minimal FINE wrapper proof-of-concept
   """
@@ -2026,7 +2026,7 @@ defmodule ChexMinimal do
   @on_load :load_nifs
 
   def load_nifs do
-    path = :filename.join(:code.priv_dir(:chex), 'chex_fine')
+    path = :filename.join(:code.priv_dir(:natch), 'natch_fine')
     :ok = :erlang.load_nif(path, 0)
   end
 
@@ -2037,8 +2037,8 @@ end
 
 ### Test
 ```elixir
-{:ok, client} = ChexMinimal.create_client()
-"pong" = ChexMinimal.ping(client)
+{:ok, client} = NatchMinimal.create_client()
+"pong" = NatchMinimal.ping(client)
 ```
 
 If this works, you're ready to proceed with the full implementation!

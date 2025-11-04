@@ -1,7 +1,7 @@
-# Chex vs Pillar Benchmark Suite
+# Natch vs Pillar Benchmark Suite
 #
 # Usage:
-#   mix run bench/chex_vs_pillar_bench.exs
+#   mix run bench/natch_vs_pillar_bench.exs
 #
 # Requires ClickHouse running:
 #   docker-compose up -d
@@ -10,17 +10,17 @@ Code.require_file("helpers.ex", __DIR__)
 
 alias Bench.Helpers
 
-defmodule ChexVsPillarBench do
+defmodule NatchVsPillarBench do
   @moduledoc """
-  Comprehensive benchmark comparing Chex (native TCP) vs Pillar (HTTP).
+  Comprehensive benchmark comparing Natch (native TCP) vs Pillar (HTTP).
   """
 
   def run do
-    IO.puts("\n=== Chex vs Pillar Benchmark Suite ===\n")
+    IO.puts("\n=== Natch vs Pillar Benchmark Suite ===\n")
     IO.puts("Starting ClickHouse connections...")
 
     # Setup connections
-    {:ok, chex_conn} = setup_chex()
+    {:ok, natch_conn} = setup_natch()
     pillar_conn = setup_pillar()
 
     IO.puts("✓ Connections established\n")
@@ -43,11 +43,11 @@ defmodule ChexVsPillarBench do
 
     Benchee.run(
       %{
-        "Chex INSERT 10k rows" => fn ->
-          table = Helpers.unique_table_name("chex_insert_10k")
-          Chex.Connection.execute(chex_conn, Helpers.create_test_table(table))
-          :ok = Chex.insert(chex_conn, table, columns_10k, schema)
-          Chex.Connection.execute(chex_conn, Helpers.drop_test_table(table))
+        "Natch INSERT 10k rows" => fn ->
+          table = Helpers.unique_table_name("natch_insert_10k")
+          Natch.Connection.execute(natch_conn, Helpers.create_test_table(table))
+          :ok = Natch.insert(natch_conn, table, columns_10k, schema)
+          Natch.Connection.execute(natch_conn, Helpers.drop_test_table(table))
         end,
         "Pillar INSERT 10k rows" => fn ->
           table = Helpers.unique_table_name("pillar_insert_10k")
@@ -55,11 +55,11 @@ defmodule ChexVsPillarBench do
           {:ok, _} = Pillar.insert_to_table(pillar_conn, table, rows_10k)
           {:ok, _} = Pillar.query(pillar_conn, Helpers.drop_test_table(table))
         end,
-        "Chex INSERT 100k rows" => fn ->
-          table = Helpers.unique_table_name("chex_insert_100k")
-          Chex.Connection.execute(chex_conn, Helpers.create_test_table(table))
-          :ok = Chex.insert(chex_conn, table, columns_100k, schema)
-          Chex.Connection.execute(chex_conn, Helpers.drop_test_table(table))
+        "Natch INSERT 100k rows" => fn ->
+          table = Helpers.unique_table_name("natch_insert_100k")
+          Natch.Connection.execute(natch_conn, Helpers.create_test_table(table))
+          :ok = Natch.insert(natch_conn, table, columns_100k, schema)
+          Natch.Connection.execute(natch_conn, Helpers.drop_test_table(table))
         end,
         "Pillar INSERT 100k rows" => fn ->
           table = Helpers.unique_table_name("pillar_insert_100k")
@@ -67,11 +67,11 @@ defmodule ChexVsPillarBench do
           {:ok, _} = Pillar.insert_to_table(pillar_conn, table, rows_100k)
           {:ok, _} = Pillar.query(pillar_conn, Helpers.drop_test_table(table))
         end,
-        "Chex INSERT 1M rows" => fn ->
-          table = Helpers.unique_table_name("chex_insert_1m")
-          Chex.Connection.execute(chex_conn, Helpers.create_test_table(table))
-          :ok = Chex.insert(chex_conn, table, columns_1m, schema)
-          Chex.Connection.execute(chex_conn, Helpers.drop_test_table(table))
+        "Natch INSERT 1M rows" => fn ->
+          table = Helpers.unique_table_name("natch_insert_1m")
+          Natch.Connection.execute(natch_conn, Helpers.create_test_table(table))
+          :ok = Natch.insert(natch_conn, table, columns_1m, schema)
+          Natch.Connection.execute(natch_conn, Helpers.drop_test_table(table))
         end,
         "Pillar INSERT 1M rows" => fn ->
           table = Helpers.unique_table_name("pillar_insert_1m")
@@ -96,12 +96,12 @@ defmodule ChexVsPillarBench do
 
     # Setup tables for SELECT benchmarks
     IO.puts("\n=== Setting up SELECT benchmark tables ===\n")
-    chex_select_table = "chex_select_bench"
+    natch_select_table = "natch_select_bench"
     pillar_select_table = "pillar_select_bench"
 
-    Chex.Connection.execute(chex_conn, Helpers.drop_test_table(chex_select_table))
-    Chex.Connection.execute(chex_conn, Helpers.create_test_table(chex_select_table))
-    :ok = Chex.insert(chex_conn, chex_select_table, columns_1m, schema)
+    Natch.Connection.execute(natch_conn, Helpers.drop_test_table(natch_select_table))
+    Natch.Connection.execute(natch_conn, Helpers.create_test_table(natch_select_table))
+    :ok = Natch.insert(natch_conn, natch_select_table, columns_1m, schema)
 
     {:ok, _} = Pillar.query(pillar_conn, Helpers.drop_test_table(pillar_select_table))
     {:ok, _} = Pillar.query(pillar_conn, Helpers.create_test_table(pillar_select_table))
@@ -114,18 +114,18 @@ defmodule ChexVsPillarBench do
 
     Benchee.run(
       %{
-        "Chex SELECT all 1M rows" => fn ->
+        "Natch SELECT all 1M rows" => fn ->
           {:ok, _cols} =
-            Chex.Connection.select_cols(chex_conn, "SELECT * FROM #{chex_select_table}")
+            Natch.Connection.select_cols(natch_conn, "SELECT * FROM #{natch_select_table}")
         end,
         "Pillar SELECT all 1M rows" => fn ->
           {:ok, _rows} = Pillar.select(pillar_conn, "SELECT * FROM #{pillar_select_table}")
         end,
-        "Chex SELECT filtered (10k rows)" => fn ->
+        "Natch SELECT filtered (10k rows)" => fn ->
           {:ok, _cols} =
-            Chex.Connection.select_cols(
-              chex_conn,
-              "SELECT * FROM #{chex_select_table} WHERE user_id < 1000"
+            Natch.Connection.select_cols(
+              natch_conn,
+              "SELECT * FROM #{natch_select_table} WHERE user_id < 1000"
             )
         end,
         "Pillar SELECT filtered (10k rows)" => fn ->
@@ -135,11 +135,11 @@ defmodule ChexVsPillarBench do
               "SELECT * FROM #{pillar_select_table} WHERE user_id < 1000"
             )
         end,
-        "Chex SELECT aggregation" => fn ->
+        "Natch SELECT aggregation" => fn ->
           {:ok, _cols} =
-            Chex.Connection.select_cols(
-              chex_conn,
-              "SELECT event_type, count(*) as cnt FROM #{chex_select_table} GROUP BY event_type"
+            Natch.Connection.select_cols(
+              natch_conn,
+              "SELECT event_type, count(*) as cnt FROM #{natch_select_table} GROUP BY event_type"
             )
         end,
         "Pillar SELECT aggregation" => fn ->
@@ -166,10 +166,10 @@ defmodule ChexVsPillarBench do
 
     # Cleanup
     IO.puts("\n=== Cleaning up ===\n")
-    Chex.Connection.execute(chex_conn, Helpers.drop_test_table(chex_select_table))
+    Natch.Connection.execute(natch_conn, Helpers.drop_test_table(natch_select_table))
     {:ok, _} = Pillar.query(pillar_conn, Helpers.drop_test_table(pillar_select_table))
 
-    GenServer.stop(chex_conn)
+    GenServer.stop(natch_conn)
 
     IO.puts("✓ Benchmark complete!\n")
     IO.puts("HTML reports generated:")
@@ -177,8 +177,8 @@ defmodule ChexVsPillarBench do
     IO.puts("  - bench/results_select.html\n")
   end
 
-  defp setup_chex do
-    Chex.Connection.start_link(
+  defp setup_natch do
+    Natch.Connection.start_link(
       host: "localhost",
       port: 9000,
       database: "default"
@@ -191,4 +191,4 @@ defmodule ChexVsPillarBench do
 end
 
 # Run the benchmark
-ChexVsPillarBench.run()
+NatchVsPillarBench.run()

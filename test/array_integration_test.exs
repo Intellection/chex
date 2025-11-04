@@ -1,7 +1,7 @@
-defmodule Chex.ArrayIntegrationTest do
+defmodule Natch.ArrayIntegrationTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Column
+  alias Natch.Column
 
   test "Array(UInt64) fast path works" do
     col = Column.new({:array, :uint64})

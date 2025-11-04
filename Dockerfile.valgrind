@@ -26,7 +26,7 @@ RUN mix deps.get
 COPY . .
 
 # Clean any macOS build artifacts
-RUN rm -rf native/chex_fine/_build priv/*.so _build
+RUN rm -rf native/natch_fine/_build priv/*.so _build
 
 # Update tests to use CLICKHOUSE_HOST environment variable
 RUN find test -name "*.exs" -type f -exec sed -i 's/host: "localhost"/host: System.get_env("CLICKHOUSE_HOST", "localhost")/g' {} \;
@@ -35,7 +35,7 @@ RUN find test -name "*.exs" -type f -exec sed -i 's/host: "localhost"/host: Syst
 RUN mkdir -p /clickhouse-cpp && \
     cd /clickhouse-cpp && \
     git clone --depth 1 https://github.com/ClickHouse/clickhouse-cpp.git . && \
-    sed -i 's|/Users/brendon/work/clickhouse-cpp|/clickhouse-cpp|g' /app/native/chex_fine/CMakeLists.txt
+    sed -i 's|/Users/brendon/work/clickhouse-cpp|/clickhouse-cpp|g' /app/native/natch_fine/CMakeLists.txt
 
 # Compile the project
 ENV MIX_ENV=test

@@ -1,6 +1,6 @@
-defmodule Chex.NestingTest do
+defmodule Natch.NestingTest do
   use ExUnit.Case, async: true
-  alias Chex.Column
+  alias Natch.Column
 
   describe "Priority 1: Array(Nullable(T)) - Nullable elements in arrays" do
     test "Array(Nullable(String)) - creates column" do

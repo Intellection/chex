@@ -56,12 +56,12 @@ The original benchmark showed Pillar as "15x faster" for SELECT queries. Investi
 
 **Performance comparison (1M rows, 2 columns):**
 - `Pillar.query()`: 20ms (unparsed TSV string)
-- `Chex.select_cols()`: 392ms (fully parsed, 7 columns × 1M rows)
+- `Natch.select_cols()`: 392ms (fully parsed, 7 columns × 1M rows)
 - `Pillar.select()`: ~1450ms (parsed JSON, 2 columns only!)
 
 **Conclusion:**
 - The Pillar benchmark was comparing apples (unparsed strings) to oranges (materialized terms)
-- When properly compared with parsing, **Chex is 3.7x FASTER than Pillar.select()**!
+- When properly compared with parsing, **Natch is 3.7x FASTER than Pillar.select()**!
 
 ### 2. The Bottleneck is Term Creation, Not NIF Boundary
 
@@ -121,10 +121,10 @@ Binary Passthrough:
 
 ### Code Implementation
 
-#### Elixir Parser (`lib/chex/parser/binary.ex`)
+#### Elixir Parser (`lib/natch/parser/binary.ex`)
 
 ```elixir
-defmodule Chex.Parser.Binary do
+defmodule Natch.Parser.Binary do
   # Parse UInt64 array - BEAM-optimized binary pattern matching
   @spec parse_uint64_array(binary()) :: [non_neg_integer()]
   def parse_uint64_array(binary) do
@@ -137,7 +137,7 @@ end
 
 **Performance:** 591ms to parse 7M values (118µs per 1000 values)
 
-#### C++ NIF (`native/chex_fine/src/select.cpp`)
+#### C++ NIF (`native/natch_fine/src/select.cpp`)
 
 ```cpp
 BinaryColumnarResult client_select_cols_binary(
@@ -212,7 +212,7 @@ Despite being slower for immediate materialization, binary passthrough could be 
 
 ```elixir
 # Keep data as binary, pass to Explorer
-{:ok, %{columns: binaries, metadata: meta}} = Chex.select_cols_binary(conn, sql)
+{:ok, %{columns: binaries, metadata: meta}} = Natch.select_cols_binary(conn, sql)
 
 # Create Explorer DataFrame directly from binaries (zero-copy)
 df = Explorer.DataFrame.from_binary_columns(binaries, meta)
@@ -224,7 +224,7 @@ This would avoid Erlang term creation entirely.
 
 ```elixir
 # Return binary chunks as they arrive
-{:ok, stream} = Chex.stream_binary(conn, sql)
+{:ok, stream} = Natch.stream_binary(conn, sql)
 
 # Parse only what you need
 stream
@@ -236,31 +236,31 @@ stream
 
 ```elixir
 # Get binary but only parse specific columns
-{:ok, %{columns: bins}} = Chex.select_cols_binary(conn, "SELECT id, name, data")
+{:ok, %{columns: bins}} = Natch.select_cols_binary(conn, "SELECT id, name, data")
 
 # Only parse ID column, keep rest as binary
-ids = Chex.Parser.Binary.parse_uint64_array(bins["id"])
+ids = Natch.Parser.Binary.parse_uint64_array(bins["id"])
 # Skip parsing 'name' and 'data' if not needed
 ```
 
 ## Recommendations
 
-### For Chex Users
+### For Natch Users
 
 **Use traditional `select_cols/2` for now.** It's 2x faster than binary passthrough when you need materialized terms.
 
 ```elixir
 # Recommended (faster)
-{:ok, columns} = Chex.Connection.select_cols(conn, "SELECT * FROM table")
+{:ok, columns} = Natch.Connection.select_cols(conn, "SELECT * FROM table")
 
 # Not recommended (slower) unless you have a specific need
-{:ok, columns} = Chex.Connection.select_cols_binary(conn, "SELECT * FROM table")
+{:ok, columns} = Natch.Connection.select_cols_binary(conn, "SELECT * FROM table")
 ```
 
 ### Future Opportunities
 
-1. **Arrow Integration**: Implement `Chex.select_to_arrow/2` that uses binary passthrough and creates Arrow tables directly
-2. **Streaming**: Implement `Chex.stream_binary/2` for memory-efficient large result sets
+1. **Arrow Integration**: Implement `Natch.select_to_arrow/2` that uses binary passthrough and creates Arrow tables directly
+2. **Streaming**: Implement `Natch.stream_binary/2` for memory-efficient large result sets
 3. **Selective Parsing**: Allow users to specify which columns to parse vs keep as binary
 
 ### About Pillar Benchmarks
@@ -271,26 +271,26 @@ Be cautious when comparing Pillar performance. Pillar has two APIs with very dif
 # Pillar.query: 20ms (returns unparsed TSV string) - NOT comparable!
 {:ok, tsv_string} = Pillar.query(conn, "SELECT * FROM table")
 
-# Pillar.select: ~1450ms (parses JSON into maps) - 3.7x SLOWER than Chex!
+# Pillar.select: ~1450ms (parses JSON into maps) - 3.7x SLOWER than Natch!
 {:ok, rows} = Pillar.select(conn, "SELECT * FROM table")
 
-# Chex: 392ms (returns fully parsed columnar terms) - FASTEST!
-{:ok, columns} = Chex.Connection.select_cols(conn, "SELECT * FROM table")
+# Natch: 392ms (returns fully parsed columnar terms) - FASTEST!
+{:ok, columns} = Natch.Connection.select_cols(conn, "SELECT * FROM table")
 ```
 
-**Always use `Pillar.select` for fair comparisons**, as it's the only API that returns parsed data comparable to Chex's output.
+**Always use `Pillar.select` for fair comparisons**, as it's the only API that returns parsed data comparable to Natch's output.
 
 ## Files Created/Modified
 
 ### New Files
-- `lib/chex/parser.ex` - Main orchestrator for binary parsing
-- `lib/chex/parser/binary.ex` - Binary pattern matching utilities
-- `lib/chex/parser/numeric.ex` - Numeric type parsers
+- `lib/natch/parser.ex` - Main orchestrator for binary parsing
+- `lib/natch/parser/binary.ex` - Binary pattern matching utilities
+- `lib/natch/parser/numeric.ex` - Numeric type parsers
 
 ### Modified Files
-- `native/chex_fine/src/select.cpp` - Added `client_select_cols_binary()` NIF
-- `lib/chex/native.ex` - Added NIF declaration
-- `lib/chex/connection.ex` - Added public API and GenServer handler
+- `native/natch_fine/src/select.cpp` - Added `client_select_cols_binary()` NIF
+- `lib/natch/native.ex` - Added NIF declaration
+- `lib/natch/connection.ex` - Added public API and GenServer handler
 
 ### Test Scripts
 - `/tmp/test_1m_uint64.exs` - Benchmark 1M UInt64 values
@@ -372,14 +372,14 @@ This appends `FORMAT JSON` to the query and parses the response with Jason.
 **For 1M rows × 2 numeric columns:**
 - `Pillar.query()`: 20ms (unparsed TSV string - 15MB)
 - `Pillar.select()`: ~1450ms (HTTP + Jason parsing to maps)
-- `Chex.select_cols()`: 392ms (native TCP + C++ term creation, 7 columns!)
+- `Natch.select_cols()`: 392ms (native TCP + C++ term creation, 7 columns!)
 
-**Conclusion:** When comparing parsed output, Chex is **3.7x faster than Pillar.select()**, and Chex handles more columns (7 vs 2) in the comparison!
+**Conclusion:** When comparing parsed output, Natch is **3.7x faster than Pillar.select()**, and Natch handles more columns (7 vs 2) in the comparison!
 
 ## Future Work
 
-- [ ] Implement `Chex.select_to_arrow/2` for zero-copy Arrow integration
-- [ ] Implement `Chex.stream_binary/2` for memory-efficient streaming
+- [ ] Implement `Natch.select_to_arrow/2` for zero-copy Arrow integration
+- [ ] Implement `Natch.stream_binary/2` for memory-efficient streaming
 - [ ] Add selective column parsing (parse some, keep others as binary)
 - [ ] Explore other use cases where deferred parsing is beneficial
 - [ ] Consider exposing binary API for advanced users who want control

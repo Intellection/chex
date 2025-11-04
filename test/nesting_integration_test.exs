@@ -1,7 +1,7 @@
-defmodule Chex.NestingIntegrationTest do
+defmodule Natch.NestingIntegrationTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Connection
+  alias Natch.Connection
 
   setup do
     # Generate unique table name for this test
@@ -47,7 +47,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       # SELECT and verify
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
@@ -78,7 +78,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -106,7 +106,7 @@ defmodule Chex.NestingIntegrationTest do
         status: ["active", nil, "inactive", "active", nil]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 5
@@ -141,7 +141,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -173,7 +173,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -205,7 +205,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -237,7 +237,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -268,7 +268,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -299,7 +299,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -330,7 +330,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -361,7 +361,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -395,7 +395,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2
@@ -430,7 +430,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 3
@@ -465,7 +465,7 @@ defmodule Chex.NestingIntegrationTest do
         ]
       }
 
-      assert :ok = Chex.insert(conn, table, columns, schema)
+      assert :ok = Natch.insert(conn, table, columns, schema)
 
       assert {:ok, result} = Connection.select_rows(conn, "SELECT * FROM #{table} ORDER BY id")
       assert length(result) == 2

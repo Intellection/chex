@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(chex_fine)
+project(natch_fine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -51,7 +51,7 @@ else()
 endif()
 
 # Build NIF shared library
-add_library(chex_fine SHARED
+add_library(natch_fine SHARED
   src/minimal.cpp
   src/column.cpp
   src/block.cpp
@@ -59,13 +59,13 @@ add_library(chex_fine SHARED
 )
 
 # Link against clickhouse-cpp
-target_link_libraries(chex_fine
+target_link_libraries(natch_fine
   PRIVATE
     clickhouse-cpp-lib
 )
 
 # Include directories
-target_include_directories(chex_fine
+target_include_directories(natch_fine
   PRIVATE
     ${CLICKHOUSE_CPP_DIR}
     ${ERLANG_INCLUDE_DIR}
@@ -73,7 +73,7 @@ target_include_directories(chex_fine
 )
 
 # Set visibility and naming
-set_target_properties(chex_fine PROPERTIES
+set_target_properties(natch_fine PROPERTIES
   CXX_VISIBILITY_PRESET hidden
   PREFIX ""
   SUFFIX ".so"
@@ -87,13 +87,13 @@ else()
   set(PRIV_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/../../priv)
 endif()
 
-set_target_properties(chex_fine PROPERTIES
+set_target_properties(natch_fine PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${PRIV_OUTPUT_DIR}
 )
 
 # Apple-specific settings
 if(APPLE)
-  set_target_properties(chex_fine PROPERTIES
+  set_target_properties(natch_fine PROPERTIES
     SUFFIX ".so"
     LINK_FLAGS "-undefined dynamic_lookup"
   )

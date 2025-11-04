@@ -1,4 +1,4 @@
-defmodule Chex.Block do
+defmodule Natch.Block do
   @moduledoc """
   Pure functions for building ClickHouse blocks from columnar data.
 
@@ -8,7 +8,7 @@ defmodule Chex.Block do
 
   ## Columnar Format
 
-  Chex uses a columnar format that matches ClickHouse's native storage:
+  Natch uses a columnar format that matches ClickHouse's native storage:
 
       columns = %{
         id: [1, 2, 3],
@@ -18,24 +18,24 @@ defmodule Chex.Block do
 
       schema = [id: :uint64, name: :string, amount: :float64]
 
-      block = Chex.Block.build_block(columns, schema)
+      block = Natch.Block.build_block(columns, schema)
 
   This format is:
   - **10-1000x faster** than row-oriented (1 NIF call per column vs N×M calls)
   - **Matches ClickHouse native format** (no transposition needed)
   - **Natural for analytics** (operate on columns, not rows)
 
-  If you have row-oriented data, use `Chex.Conversion.rows_to_columns/2`.
+  If you have row-oriented data, use `Natch.Conversion.rows_to_columns/2`.
   """
 
-  alias Chex.{Column, Native}
+  alias Natch.{Column, Native}
 
   @doc """
   Builds a Block from columnar data and schema.
 
   This is a pure function that constructs a Block resource from columnar data.
-  Type validation happens in `Chex.Column.append_bulk/2` as each column is built.
-  The block can then be inserted via `Chex.insert/4` or used for testing.
+  Type validation happens in `Natch.Column.append_bulk/2` as each column is built.
+  The block can then be inserted via `Natch.insert/4` or used for testing.
 
   ## Parameters
 
@@ -54,7 +54,7 @@ defmodule Chex.Block do
 
       schema = [id: :uint64, name: :string]
       columns = %{id: [1, 2, 3], name: ["Alice", "Bob", "Charlie"]}
-      block = Chex.Block.build_block(columns, schema)
+      block = Natch.Block.build_block(columns, schema)
 
       # Block is a reference that can be passed to Native.client_insert
   """
@@ -73,7 +73,7 @@ defmodule Chex.Block do
 
     block
   rescue
-    e -> Chex.Error.handle_nif_error(e)
+    e -> Natch.Error.handle_nif_error(e)
   end
 
   @doc """
@@ -87,7 +87,7 @@ defmodule Chex.Block do
 
       columns = %{id: [1, 2, 3], name: ["Alice", "Bob", "Charlie"]}
       schema = [id: :uint64, name: :string]
-      column_refs = Chex.Block.build_columns_bulk(columns, schema)
+      column_refs = Natch.Block.build_columns_bulk(columns, schema)
       # => [id: #Reference<...>, name: #Reference<...>]
 
   ## Complex Types

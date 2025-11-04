@@ -1,4 +1,4 @@
-defmodule Chex.Conversion do
+defmodule Natch.Conversion do
   @moduledoc """
   Conversion utilities between row-oriented and column-oriented data formats.
 
@@ -7,7 +7,7 @@ defmodule Chex.Conversion do
 
   ## Validation
 
-  Type and length validation happens automatically in `Chex.Column.append_bulk/2`
+  Type and length validation happens automatically in `Natch.Column.append_bulk/2`
   and the underlying FINE NIFs when you build blocks, providing type safety with
   optimal performance.
   """
@@ -24,7 +24,7 @@ defmodule Chex.Conversion do
       ...>   %{id: 2, name: "Bob", age: 25}
       ...> ]
       iex> schema = [id: :uint64, name: :string, age: :uint64]
-      iex> Chex.Conversion.rows_to_columns(rows, schema)
+      iex> Natch.Conversion.rows_to_columns(rows, schema)
       %{
         id: [1, 2],
         name: ["Alice", "Bob"],
@@ -58,7 +58,7 @@ defmodule Chex.Conversion do
       ...>   age: [30, 25]
       ...> }
       iex> schema = [id: :uint64, name: :string, age: :uint64]
-      iex> Chex.Conversion.columns_to_rows(columns, schema)
+      iex> Natch.Conversion.columns_to_rows(columns, schema)
       [
         %{id: 1, name: "Alice", age: 30},
         %{id: 2, name: "Bob", age: 25}

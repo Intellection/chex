@@ -1,13 +1,13 @@
-# Chex Benchmark Suite
+# Natch Benchmark Suite
 
-Comprehensive benchmarks comparing Chex (native TCP) vs Pillar (HTTP) ClickHouse clients.
+Comprehensive benchmarks comparing Natch (native TCP) vs Pillar (HTTP) ClickHouse clients.
 
 ## Prerequisites
 
 1. **ClickHouse Server Running**
    ```bash
    # Start ClickHouse via Docker
-   cd /Users/brendon/work/chex
+   cd /Users/brendon/work/natch
    docker-compose up -d
 
    # Verify it's running
@@ -22,12 +22,12 @@ Comprehensive benchmarks comparing Chex (native TCP) vs Pillar (HTTP) ClickHouse
 
 ## Benchmarks
 
-### Chex-Only Benchmark
+### Natch-Only Benchmark
 
-Tests Chex performance in isolation:
+Tests Natch performance in isolation:
 
 ```bash
-mix run bench/chex_only_bench.exs
+mix run bench/natch_only_bench.exs
 ```
 
 **What it tests:**
@@ -37,14 +37,14 @@ mix run bench/chex_only_bench.exs
 
 **Results:**
 - Console output with statistics
-- HTML reports: `bench/results_chex_insert.html` and `bench/results_chex_select.html`
+- HTML reports: `bench/results_natch_insert.html` and `bench/results_natch_select.html`
 
-### Chex vs Pillar Comparison
+### Natch vs Pillar Comparison
 
 Head-to-head comparison:
 
 ```bash
-mix run bench/chex_vs_pillar_bench.exs
+mix run bench/natch_vs_pillar_bench.exs
 ```
 
 **What it tests:**
@@ -81,11 +81,11 @@ Data is generated deterministically with a fixed random seed for reproducibility
 
 ```
 Name                           ips        average  deviation         median
-Chex INSERT 100k rows         5.50       181.82 ms     ±8.23%      178.45 ms
+Natch INSERT 100k rows         5.50       181.82 ms     ±8.23%      178.45 ms
 Pillar INSERT 100k rows       2.20       454.55 ms    ±12.45%      445.32 ms
 
 Comparison:
-Chex INSERT 100k rows         5.50
+Natch INSERT 100k rows         5.50
 Pillar INSERT 100k rows       2.20 - 2.50x slower
 ```
 
@@ -124,7 +124,7 @@ docker-compose up -d
 This may indicate:
 - ClickHouse version incompatibility
 - Pillar configuration issue
-- Try running `chex_only_bench.exs` first to isolate the problem
+- Try running `natch_only_bench.exs` first to isolate the problem
 
 ### Benchmarks take too long
 
@@ -144,7 +144,7 @@ If you run out of memory:
 
 ### Add More Scenarios
 
-Edit `chex_vs_pillar_bench.exs` and add to the Benchee.run map:
+Edit `natch_vs_pillar_bench.exs` and add to the Benchee.run map:
 
 ```elixir
 "My custom benchmark" => fn ->
@@ -199,7 +199,7 @@ To run benchmarks in CI:
   run: |
     docker-compose up -d
     sleep 5  # Wait for ClickHouse to be ready
-    mix run bench/chex_only_bench.exs
+    mix run bench/natch_only_bench.exs
 ```
 
 Consider:
@@ -221,4 +221,4 @@ When adding new benchmarks:
 
 - [Benchee Documentation](https://hexdocs.pm/benchee/)
 - [ClickHouse Performance Guide](https://clickhouse.com/docs/en/operations/performance/)
-- [Chex Performance Tips](../README.md#performance-tips)
+- [Natch Performance Tips](../README.md#performance-tips)

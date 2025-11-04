@@ -34,7 +34,7 @@ This document outlines a plan to implement a **pure Elixir parser** for ClickHou
 
 ## Architecture Overview
 
-### Current Architecture (Chex with clickhouse-cpp NIF)
+### Current Architecture (Natch with clickhouse-cpp NIF)
 
 ```
 Elixir App
@@ -208,7 +208,7 @@ end
 ### Block Parser
 
 ```elixir
-defmodule Chex.Protocol.Block do
+defmodule Natch.Protocol.Block do
   defstruct [:columns, :rows, :block_info]
 
   def read(binary, server_revision) do
@@ -251,7 +251,7 @@ end
 **Wire Format:** Packed array of values, no delimiters
 
 ```elixir
-defmodule Chex.Protocol.Column.Numeric do
+defmodule Natch.Protocol.Column.Numeric do
   def load_uint64(binary, row_count) do
     byte_count = row_count * 8
     case binary do
@@ -301,7 +301,7 @@ end
 **Wire Format:** For each string: VarInt length + raw bytes
 
 ```elixir
-defmodule Chex.Protocol.Column.String do
+defmodule Natch.Protocol.Column.String do
   def load(binary, row_count) do
     load_strings(binary, row_count, [])
   end
@@ -330,7 +330,7 @@ end
 **Wire Format:** Concatenated fixed-size strings (zero-padded)
 
 ```elixir
-defmodule Chex.Protocol.Column.FixedString do
+defmodule Natch.Protocol.Column.FixedString do
   def load(binary, row_count, string_size) do
     byte_count = row_count * string_size
     case binary do
@@ -356,7 +356,7 @@ end
 2. Nested column data
 
 ```elixir
-defmodule Chex.Protocol.Column.Nullable do
+defmodule Natch.Protocol.Column.Nullable do
   def load(binary, row_count, nested_type, server_revision) do
     # Read null bitmap (1 byte per row)
     with <<null_bitmap::binary-size(row_count), rest::binary>> <- binary,
@@ -389,7 +389,7 @@ end
 2. Nested column data with total element count
 
 ```elixir
-defmodule Chex.Protocol.Column.Array do
+defmodule Natch.Protocol.Column.Array do
   def load(binary, row_count, nested_type, server_revision) do
     # Read offsets (UInt64 array)
     with {:ok, offsets, rest} <- Numeric.load_uint64(binary, row_count),
@@ -432,7 +432,7 @@ Result:
 **Wire Format:** Wrappers around numeric types
 
 ```elixir
-defmodule Chex.Protocol.Column.Date do
+defmodule Natch.Protocol.Column.Date do
   # Date stored as UInt16 (days since Unix epoch)
   def load(binary, row_count) do
     with {:ok, days_values, rest} <- Numeric.load_uint16(binary, row_count) do
@@ -444,7 +444,7 @@ defmodule Chex.Protocol.Column.Date do
   end
 end
 
-defmodule Chex.Protocol.Column.DateTime do
+defmodule Natch.Protocol.Column.DateTime do
   # DateTime stored as UInt32 (seconds since Unix epoch)
   def load(binary, row_count) do
     with {:ok, timestamp_values, rest} <- Numeric.load_uint32(binary, row_count) do
@@ -456,7 +456,7 @@ defmodule Chex.Protocol.Column.DateTime do
   end
 end
 
-defmodule Chex.Protocol.Column.DateTime64 do
+defmodule Natch.Protocol.Column.DateTime64 do
   # DateTime64 stored as Int64 (ticks with specified precision)
   def load(binary, row_count, precision) do
     with {:ok, tick_values, rest} <- Numeric.load_int64(binary, row_count) do
@@ -494,7 +494,7 @@ LowCardinalityColumn = key_version:VarInt +
 - Bit 10: NeedUpdateDictionary
 
 ```elixir
-defmodule Chex.Protocol.Column.LowCardinality do
+defmodule Natch.Protocol.Column.LowCardinality do
   # State management required
   # Dictionary persists across blocks for same query
 
@@ -559,7 +559,7 @@ end
 
 **State Management:**
 ```elixir
-defmodule Chex.Protocol.LowCardinalityState do
+defmodule Natch.Protocol.LowCardinalityState do
   use GenServer
 
   defstruct dictionaries: %{}
@@ -603,7 +603,7 @@ CompressedBlock = hash:UInt128 +           # CityHash128 checksum
 **Use existing NIFs** - Don't implement LZ4/ZSTD in pure Elixir
 
 ```elixir
-defmodule Chex.Protocol.Compression do
+defmodule Natch.Protocol.Compression do
   # Use existing Elixir packages (which wrap C libraries)
 
   def decompress_block(binary) do
@@ -663,7 +663,7 @@ end
 ### TCP Socket Handling
 
 ```elixir
-defmodule Chex.Protocol.Connection do
+defmodule Natch.Protocol.Connection do
   use GenServer
 
   defstruct [
@@ -727,7 +727,7 @@ defmodule Chex.Protocol.Connection do
   end
 
   defp send_client_hello(socket, database, user, password) do
-    client_name = "chex"
+    client_name = "natch"
     client_version_major = 1
     client_version_minor = 0
     client_revision = 54451
@@ -835,7 +835,7 @@ end
 ### 3. Streaming for Large Columns
 
 ```elixir
-defmodule Chex.Protocol.Stream do
+defmodule Natch.Protocol.Stream do
   def stream_column(socket, column_type, row_count) do
     Stream.resource(
       fn -> {socket, row_count} end,
@@ -873,7 +873,7 @@ end
 ### Unit Tests
 
 ```elixir
-defmodule Chex.Protocol.WireFormatTest do
+defmodule Natch.Protocol.WireFormatTest do
   use ExUnit.Case
 
   describe "VarInt encoding/decoding" do
@@ -899,12 +899,12 @@ end
 ### Integration Tests
 
 ```elixir
-defmodule Chex.Protocol.IntegrationTest do
+defmodule Natch.Protocol.IntegrationTest do
   use ExUnit.Case
 
   setup do
     # Start test ClickHouse instance
-    {:ok, conn} = Chex.Protocol.Connection.start_link(
+    {:ok, conn} = Natch.Protocol.Connection.start_link(
       host: "localhost",
       port: 9000,
       database: "default"
@@ -915,14 +915,14 @@ defmodule Chex.Protocol.IntegrationTest do
 
   test "round-trip UInt64 column", %{conn: conn} do
     # Create table
-    Chex.Protocol.execute(conn, "CREATE TABLE test_uint64 (val UInt64) ENGINE = Memory")
+    Natch.Protocol.execute(conn, "CREATE TABLE test_uint64 (val UInt64) ENGINE = Memory")
 
     # Insert data
     values = Enum.to_list(1..1000)
-    Chex.Protocol.insert(conn, "test_uint64", %{val: values}, [{:val, :uint64}])
+    Natch.Protocol.insert(conn, "test_uint64", %{val: values}, [{:val, :uint64}])
 
     # Query back
-    {:ok, blocks} = Chex.Protocol.query(conn, "SELECT val FROM test_uint64 ORDER BY val")
+    {:ok, blocks} = Natch.Protocol.query(conn, "SELECT val FROM test_uint64 ORDER BY val")
     [block] = blocks
 
     assert length(block.columns) == 1
@@ -930,16 +930,16 @@ defmodule Chex.Protocol.IntegrationTest do
     assert column.values == values
 
     # Cleanup
-    Chex.Protocol.execute(conn, "DROP TABLE test_uint64")
+    Natch.Protocol.execute(conn, "DROP TABLE test_uint64")
   end
 
   test "handles nullable columns", %{conn: conn} do
-    Chex.Protocol.execute(conn, "CREATE TABLE test_nullable (val Nullable(UInt64)) ENGINE = Memory")
+    Natch.Protocol.execute(conn, "CREATE TABLE test_nullable (val Nullable(UInt64)) ENGINE = Memory")
 
     values = [1, nil, 3, nil, 5]
-    Chex.Protocol.insert(conn, "test_nullable", %{val: values}, [{:val, {:nullable, :uint64}}])
+    Natch.Protocol.insert(conn, "test_nullable", %{val: values}, [{:val, {:nullable, :uint64}}])
 
-    {:ok, blocks} = Chex.Protocol.query(conn, "SELECT val FROM test_nullable")
+    {:ok, blocks} = Natch.Protocol.query(conn, "SELECT val FROM test_nullable")
     [block] = blocks
     [column] = block.columns
 
@@ -951,7 +951,7 @@ end
 ### Property-Based Tests
 
 ```elixir
-defmodule Chex.Protocol.PropertyTest do
+defmodule Natch.Protocol.PropertyTest do
   use ExUnit.Case
   use PropCheck
 
@@ -1061,7 +1061,7 @@ end
 ## File Structure
 
 ```
-lib/chex/protocol/
+lib/natch/protocol/
 ├── connection.ex              # GenServer for TCP connection
 ├── wire_format.ex            # VarInt, basic type encoding
 ├── packet.ex                 # Packet type definitions
@@ -1155,17 +1155,17 @@ end
 
 ```elixir
 # config/config.exs
-config :chex,
+config :natch,
   protocol: :native_nif  # or :native_elixir
 
-# lib/chex.ex
-defmodule Chex do
-  @protocol Application.compile_env(:chex, :protocol, :native_nif)
+# lib/natch.ex
+defmodule Natch do
+  @protocol Application.compile_env(:natch, :protocol, :native_nif)
 
   def connection_module do
     case @protocol do
-      :native_nif -> Chex.NIF.Connection
-      :native_elixir -> Chex.Protocol.Connection
+      :native_nif -> Natch.NIF.Connection
+      :native_elixir -> Natch.Protocol.Connection
     end
   end
 
@@ -1179,13 +1179,13 @@ end
 
 ```elixir
 # Allow per-connection protocol choice
-{:ok, conn_nif} = Chex.start_link([protocol: :native_nif] ++ opts)
-{:ok, conn_elixir} = Chex.start_link([protocol: :native_elixir] ++ opts)
+{:ok, conn_nif} = Natch.start_link([protocol: :native_nif] ++ opts)
+{:ok, conn_elixir} = Natch.start_link([protocol: :native_elixir] ++ opts)
 
 # Run benchmarks to compare
 Benchee.run(%{
-  "NIF" => fn -> Chex.query(conn_nif, query) end,
-  "Elixir" => fn -> Chex.query(conn_elixir, query) end
+  "NIF" => fn -> Natch.query(conn_nif, query) end,
+  "Elixir" => fn -> Natch.query(conn_elixir, query) end
 })
 ```
 

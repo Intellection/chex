@@ -1,7 +1,7 @@
-defmodule Chex.BangTest do
+defmodule Natch.BangTest do
   use ExUnit.Case, async: true
 
-  alias Chex.Connection
+  alias Natch.Connection
 
   setup do
     # Generate unique table name for this test
@@ -39,10 +39,10 @@ defmodule Chex.BangTest do
 
       schema = [id: :uint64, name: :string]
       columns = %{id: [1, 2, 3], name: ["Alice", "Bob", "Charlie"]}
-      Chex.insert(conn, table, columns, schema)
+      Natch.insert(conn, table, columns, schema)
 
       # Query with bang function
-      result = Chex.query!(conn, "SELECT * FROM #{table} ORDER BY id")
+      result = Natch.query!(conn, "SELECT * FROM #{table} ORDER BY id")
 
       assert is_list(result)
       assert length(result) == 3
@@ -52,13 +52,13 @@ defmodule Chex.BangTest do
 
     test "raises on invalid query", %{conn: conn, table: _table} do
       assert_raise RuntimeError, ~r/Query failed/, fn ->
-        Chex.query!(conn, "SELECT * FROM nonexistent_table")
+        Natch.query!(conn, "SELECT * FROM nonexistent_table")
       end
     end
 
     test "raises on invalid SQL syntax", %{conn: conn, table: _table} do
       assert_raise RuntimeError, ~r/Query failed/, fn ->
-        Chex.query!(conn, "INVALID SQL SYNTAX")
+        Natch.query!(conn, "INVALID SQL SYNTAX")
       end
     end
   end
@@ -66,7 +66,7 @@ defmodule Chex.BangTest do
   describe "execute!/2" do
     test "returns :ok on success", %{conn: conn, table: table} do
       result =
-        Chex.execute!(conn, """
+        Natch.execute!(conn, """
         CREATE TABLE #{table} (
           id UInt64,
           name String
@@ -78,13 +78,13 @@ defmodule Chex.BangTest do
 
     test "raises on invalid SQL", %{conn: conn, table: _table} do
       assert_raise RuntimeError, ~r/Execute failed/, fn ->
-        Chex.execute!(conn, "INVALID SQL SYNTAX")
+        Natch.execute!(conn, "INVALID SQL SYNTAX")
       end
     end
 
     test "raises on invalid table operation", %{conn: conn, table: _table} do
       assert_raise RuntimeError, ~r/Execute failed/, fn ->
-        Chex.execute!(conn, "DROP TABLE nonexistent_table")
+        Natch.execute!(conn, "DROP TABLE nonexistent_table")
       end
     end
   end
@@ -102,7 +102,7 @@ defmodule Chex.BangTest do
       schema = [id: :uint64, name: :string]
       columns = %{id: [1, 2], name: ["Alice", "Bob"]}
 
-      result = Chex.insert!(conn, table, columns, schema)
+      result = Natch.insert!(conn, table, columns, schema)
       assert :ok = result
 
       # Verify data was inserted
@@ -115,7 +115,7 @@ defmodule Chex.BangTest do
       columns = %{id: [1]}
 
       assert_raise RuntimeError, ~r/Insert failed/, fn ->
-        Chex.insert!(conn, "nonexistent_table", columns, schema)
+        Natch.insert!(conn, "nonexistent_table", columns, schema)
       end
     end
 
@@ -132,31 +132,31 @@ defmodule Chex.BangTest do
       columns = %{id: [1], name: ["Alice"]}
 
       assert_raise RuntimeError, ~r/Insert failed/, fn ->
-        Chex.insert!(conn, table, columns, schema)
+        Natch.insert!(conn, table, columns, schema)
       end
     end
   end
 
   describe "public API convenience wrappers" do
-    test "Chex.start_link/1 works", %{table: _table} do
-      {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
+    test "Natch.start_link/1 works", %{table: _table} do
+      {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
       assert is_pid(conn)
       GenServer.stop(conn)
     end
 
-    test "Chex.ping/1 works", %{conn: conn, table: _table} do
-      assert :ok = Chex.ping(conn)
+    test "Natch.ping/1 works", %{conn: conn, table: _table} do
+      assert :ok = Natch.ping(conn)
     end
 
-    test "Chex.reset/1 works", %{conn: conn, table: _table} do
-      assert :ok = Chex.reset(conn)
+    test "Natch.reset/1 works", %{conn: conn, table: _table} do
+      assert :ok = Natch.reset(conn)
       # Connection should still work after reset
-      assert :ok = Chex.ping(conn)
+      assert :ok = Natch.ping(conn)
     end
 
-    test "Chex.stop/1 works", %{table: _table} do
-      {:ok, conn} = Chex.start_link(host: "localhost", port: 9000)
-      assert :ok = Chex.stop(conn)
+    test "Natch.stop/1 works", %{table: _table} do
+      {:ok, conn} = Natch.start_link(host: "localhost", port: 9000)
+      assert :ok = Natch.stop(conn)
       refute Process.alive?(conn)
     end
   end

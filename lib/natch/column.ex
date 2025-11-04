@@ -1,11 +1,11 @@
-defmodule Chex.Column do
+defmodule Natch.Column do
   @moduledoc """
   Column builder for ClickHouse native types.
 
   Provides an Elixir API for creating and populating ClickHouse columns.
   """
 
-  alias Chex.Native
+  alias Natch.Native
 
   @type column :: %__MODULE__{
           ref: reference(),
@@ -56,14 +56,14 @@ defmodule Chex.Column do
 
   ## Examples
 
-      iex> Chex.Column.new(:uint64)
-      %Chex.Column{type: :uint64, clickhouse_type: "UInt64", ref: #Reference<...>}
+      iex> Natch.Column.new(:uint64)
+      %Natch.Column{type: :uint64, clickhouse_type: "UInt64", ref: #Reference<...>}
 
-      iex> Chex.Column.new(:string)
-      %Chex.Column{type: :string, clickhouse_type: "String", ref: #Reference<...>}
+      iex> Natch.Column.new(:string)
+      %Natch.Column{type: :string, clickhouse_type: "String", ref: #Reference<...>}
 
-      iex> Chex.Column.new({:array, :uint64})
-      %Chex.Column{type: {:array, :uint64}, clickhouse_type: "Array(UInt64)", ref: #Reference<...>}
+      iex> Natch.Column.new({:array, :uint64})
+      %Natch.Column{type: {:array, :uint64}, clickhouse_type: "Array(UInt64)", ref: #Reference<...>}
   """
   @spec new(atom() | tuple()) :: column()
   def new(type) do
@@ -85,14 +85,14 @@ defmodule Chex.Column do
 
   ## Examples
 
-      col = Chex.Column.new(:uint64)
-      :ok = Chex.Column.append_bulk(col, [1, 2, 3, 4, 5])
+      col = Natch.Column.new(:uint64)
+      :ok = Natch.Column.append_bulk(col, [1, 2, 3, 4, 5])
 
-      col = Chex.Column.new(:string)
-      :ok = Chex.Column.append_bulk(col, ["hello", "world"])
+      col = Natch.Column.new(:string)
+      :ok = Natch.Column.append_bulk(col, ["hello", "world"])
 
-      col = Chex.Column.new(:datetime)
-      :ok = Chex.Column.append_bulk(col, [~U[2024-01-01 10:00:00Z], ~U[2024-01-01 11:00:00Z]])
+      col = Natch.Column.new(:datetime)
+      :ok = Natch.Column.append_bulk(col, [~U[2024-01-01 10:00:00Z], ~U[2024-01-01 11:00:00Z]])
   """
   @spec append_bulk(column(), [term()]) :: :ok
   def append_bulk(%__MODULE__{type: :uint64, ref: ref}, values) when is_list(values) do
@@ -596,10 +596,10 @@ defmodule Chex.Column do
 
   ## Examples
 
-      col = Chex.Column.new(:uint64)
-      Chex.Column.append(col, 1)
-      Chex.Column.append(col, 2)
-      Chex.Column.size(col)
+      col = Natch.Column.new(:uint64)
+      Natch.Column.append(col, 1)
+      Natch.Column.append(col, 2)
+      Natch.Column.size(col)
       # => 2
   """
   @spec size(column()) :: non_neg_integer()

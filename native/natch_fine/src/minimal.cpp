@@ -204,4 +204,4 @@ fine::Atom client_reset_connection(ErlNifEnv *env, fine::ResourcePtr<Client> cli
 FINE_NIF(client_reset_connection, 0);
 
 // Initialize the NIF module
-FINE_INIT("Elixir.Chex.Native");
+FINE_INIT("Elixir.Natch.Native");
