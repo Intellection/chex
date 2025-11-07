@@ -33,16 +33,26 @@ defmodule Natch.Conversion do
   """
   @spec rows_to_columns([map()], schema()) :: map()
   def rows_to_columns(rows, schema) when is_list(rows) and is_list(schema) do
-    for {name, _type} <- schema, into: %{} do
-      values =
-        Enum.map(rows, fn row ->
-          # Support both atom and string keys
-          Map.get(row, name) || Map.get(row, to_string(name)) ||
-            raise ArgumentError, "Missing column #{inspect(name)} in row #{inspect(row)}"
-        end)
+    column_names = Keyword.keys(schema)
 
-      {name, values}
-    end
+    # Initialize empty lists for each column
+    initial_acc = Map.new(column_names, fn name -> {name, []} end)
+
+    # Single traversal: accumulate all columns simultaneously
+    columns =
+      Enum.reduce(rows, initial_acc, fn row, acc ->
+        Enum.reduce(column_names, acc, fn name, col_acc ->
+          # Support both atom and string keys
+          value =
+            Map.get(row, name) || Map.get(row, to_string(name)) ||
+              raise ArgumentError, "Missing column #{inspect(name)} in row #{inspect(row)}"
+
+          Map.update!(col_acc, name, fn list -> [value | list] end)
+        end)
+      end)
+
+    # Reverse all columns (we built them backwards for efficiency)
+    Map.new(columns, fn {name, values} -> {name, Enum.reverse(values)} end)
   end
 
   @doc """
@@ -66,21 +76,24 @@ defmodule Natch.Conversion do
   """
   @spec columns_to_rows(map(), schema()) :: [map()]
   def columns_to_rows(columns, schema) when is_map(columns) and is_list(schema) do
-    # Get row count from first column
     column_names = Keyword.keys(schema)
-    first_column_name = hd(column_names)
-    row_count = length(Map.fetch!(columns, first_column_name))
 
-    # Build rows
-    if row_count == 0 do
+    # Get all column lists upfront
+    column_lists = Enum.map(column_names, fn name -> Map.fetch!(columns, name) end)
+
+    # Handle empty case
+    if Enum.all?(column_lists, &(&1 == [])) do
       []
     else
-      for row_idx <- 0..(row_count - 1) do
-        for {name, _type} <- schema, into: %{} do
-          column_values = Map.fetch!(columns, name)
-          {name, Enum.at(column_values, row_idx)}
-        end
-      end
+      # Zip all columns together and convert to maps - O(M) complexity
+      column_lists
+      |> Enum.zip()
+      |> Enum.map(fn row_tuple ->
+        row_tuple
+        |> Tuple.to_list()
+        |> Enum.zip(column_names)
+        |> Map.new(fn {value, name} -> {name, value} end)
+      end)
     end
   end
 end

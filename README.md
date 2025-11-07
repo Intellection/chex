@@ -153,35 +153,31 @@ Configure socket-level timeouts to prevent operations from hanging indefinitely 
 
 ## Benchmarks
 
-Real-world performance comparison vs Pillar (HTTP-based client) on M3 Pro, tested with 7-column schema.
+Real-world performance comparison vs Pillar (HTTP-based client) on Apple M3 Pro, tested with 7-column schema.
 
 **Important:** Benchmarks use `Pillar.select/2` which parses JSON responses. Using `Pillar.query/2` (which returns unparsed TSV strings) is not a fair comparison.
 
 ### INSERT Performance
 
-| Rows | Natch | Pillar | Speedup | Memory (Natch) | Memory (Pillar) |
-|------|------|--------|---------|---------------|-----------------|
-| 10k | 13.5 ms | 63.9 ms | **4.7x faster** | 976 B | 45 MB |
-| 100k | 184 ms | 626 ms | **3.4x faster** | 976 B | 452 MB |
-| 1M | 2,094 ms | 5,545 ms | **2.6x faster** | 976 B | 4.5 GB |
-
-**Natch uses ~4.6 million times less memory** than Pillar for inserts due to columnar format.
+| Rows | Natch | Pillar | Speedup |
+|------|-------|--------|---------|
+| 10k | 13.5 ms | 63.9 ms | **4.7x faster** |
+| 100k | 184 ms | 626 ms | **3.4x faster** |
+| 1M | 2,094 ms | 5,545 ms | **2.6x faster** |
 
 ### SELECT Performance
 
-| Query Type | Natch | Pillar | Speedup | Memory (Natch) | Memory (Pillar) |
-|------------|------|--------|---------|---------------|-----------------|
-| Aggregation | 3.6 ms | 4.9 ms | **1.4x faster** | 544 B | 17 KB |
-| Filtered (10k rows) | 12 ms | 53 ms | **4.4x faster** | 128 B | 30 MB |
-| Full scan (1M rows) | 802 ms | 4,980 ms | **6.2x faster** | 128 B | 3 GB |
-
-**Natch uses ~5.5 million times less memory** than Pillar for large SELECT queries due to streaming columnar format vs materialized row-oriented maps.
+| Query Type | Natch | Pillar | Speedup |
+|------------|-------|--------|---------|
+| Aggregation | 3.2 ms | 4.8 ms | **1.5x faster** |
+| Filtered (10k rows) | 10.6 ms | 50.8 ms | **4.8x faster** |
+| Full scan (1M rows) | 749 ms | 4,711 ms | **6.3x faster** |
 
 ### Key Takeaways
 
 - **Native protocol is faster** - Natch's native TCP protocol with binary columnar format outperforms HTTP+JSON
-- **Massive memory efficiency** - Millions of times less memory usage due to streaming and columnar format
-- **Scales better** - Performance advantage increases with data size (6.2x for 1M rows vs 1.4x for aggregations)
+- **Scales better** - Performance advantage increases with data size (6.3x for 1M rows vs 1.5x for aggregations)
+- **Low overhead** - Minimal BEAM memory usage due to efficient NIF boundary crossing
 
 See `bench/README.md` and `BINARY_PASSTHROUGH.md` for detailed analysis and methodology.
 
