@@ -103,6 +103,34 @@ defmodule Natch.Connection do
     GenServer.call(conn, {:select_cols, query}, :infinity)
   end
 
+  # Phase 6C - Parameterized Query API
+
+  @doc """
+  Executes a parameterized query (DDL/DML) without returning results.
+  """
+  @spec execute_parameterized(GenServer.server(), Natch.Query.t()) :: :ok | {:error, term()}
+  def execute_parameterized(conn, query) do
+    GenServer.call(conn, {:execute_parameterized, query})
+  end
+
+  @doc """
+  Executes a parameterized SELECT query and returns results in row-major format.
+  """
+  @spec select_rows_parameterized(GenServer.server(), Natch.Query.t()) ::
+          {:ok, [map()]} | {:error, term()}
+  def select_rows_parameterized(conn, query) do
+    GenServer.call(conn, {:select_rows_parameterized, query}, :infinity)
+  end
+
+  @doc """
+  Executes a parameterized SELECT query and returns results in columnar format.
+  """
+  @spec select_cols_parameterized(GenServer.server(), Natch.Query.t()) ::
+          {:ok, map()} | {:error, term()}
+  def select_cols_parameterized(conn, query) do
+    GenServer.call(conn, {:select_cols_parameterized, query}, :infinity)
+  end
+
   # GenServer callbacks
 
   @impl true
@@ -179,6 +207,38 @@ defmodule Natch.Connection do
       # client_select_cols returns map of column lists
       cols = Native.client_select_cols(state.client, query)
 
+      {:reply, {:ok, cols}, state}
+    rescue
+      e -> {:reply, error_tuple(e), state}
+    end
+  end
+
+  # Phase 6C - Parameterized Query Support
+
+  @impl true
+  def handle_call({:execute_parameterized, query}, _from, state) do
+    try do
+      Native.client_execute_parameterized(state.client, query.ref)
+      {:reply, :ok, state}
+    rescue
+      e -> {:reply, error_tuple(e), state}
+    end
+  end
+
+  @impl true
+  def handle_call({:select_rows_parameterized, query}, _from, state) do
+    try do
+      rows = Native.client_select_parameterized(state.client, query.ref)
+      {:reply, {:ok, rows}, state}
+    rescue
+      e -> {:reply, error_tuple(e), state}
+    end
+  end
+
+  @impl true
+  def handle_call({:select_cols_parameterized, query}, _from, state) do
+    try do
+      cols = Native.client_select_cols_parameterized(state.client, query.ref)
       {:reply, {:ok, cols}, state}
     rescue
       e -> {:reply, error_tuple(e), state}

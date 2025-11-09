@@ -103,4 +103,33 @@ defmodule Natch.Native do
   # Phase 4 - SELECT NIFs
   def client_select(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
   def client_select_cols(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Phase 6C - Parameterized Query NIFs
+  def query_create(_sql), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Query parameter binding - integers
+  def query_bind_uint64(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_uint32(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_int64(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_int32(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Query parameter binding - floats
+  def query_bind_float64(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_float32(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Query parameter binding - strings
+  def query_bind_string(_query, _name, _value), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Query parameter binding - temporal types
+  def query_bind_datetime(_query, _name, _timestamp), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_datetime64(_query, _name, _microseconds), do: :erlang.nif_error(:nif_not_loaded)
+  def query_bind_date(_query, _name, _days), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Query parameter binding - NULL
+  def query_bind_null(_query, _name), do: :erlang.nif_error(:nif_not_loaded)
+
+  # Parameterized query execution
+  def client_execute_parameterized(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
+  def client_select_parameterized(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
+  def client_select_cols_parameterized(_client, _query), do: :erlang.nif_error(:nif_not_loaded)
 end

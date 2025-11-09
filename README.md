@@ -6,12 +6,12 @@ Natch provides fast access to ClickHouse using the native TCP protocol (port 900
 
 ## Why Natch?
 
-- 🚀 **Native Protocol Performance** - Direct TCP connection using ClickHouse's binary protocol
-- 📊 **Columnar-First Design** - API designed for analytics workloads, not OLTP
-- 🔧 **Production Ready** - 227 tests covering all ClickHouse types including complex nested structures
-- 💪 **Type Complete** - Full support for all ClickHouse types: primitives, dates, decimals, UUIDs, arrays, maps, tuples, nullables, enums, and low cardinality
-- 🎯 **Zero-Copy Efficiency** - Bulk operations with minimal overhead
-- 🔒 **Memory Safe** - Built with FINE for crash-proof NIFs
+- **Native Protocol Performance** - Direct TCP connection using ClickHouse's binary protocol
+- **Columnar-First Design** - API designed for analytics workloads, not OLTP
+- **Type Complete** - Full support for all ClickHouse types: primitives, dates, decimals, UUIDs, arrays, maps, tuples, nullables, enums, and low cardinality
+- **SQL Injection Protection** - Type-safe parameterized queries with automatic type inference
+- **Zero-Copy Efficiency** - Bulk operations with minimal overhead
+- **Memory Safe** - Built with FINE for crash-proof NIFs
 
 ## Requirements
 
@@ -26,7 +26,7 @@ Add `natch` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:natch, "~> 0.2.0"}
+    {:natch, "~> 0.3.0"}
   ]
 end
 ```
@@ -415,6 +415,213 @@ Returns results as a map of column lists, ideal for large result sets and data a
 total = Enum.sum(values)
 ```
 
+### Parameterized Queries (SQL Injection Prevention)
+
+Natch provides type-safe parameterized queries that prevent SQL injection by transmitting parameter values separately from the SQL text. Parameters cannot be interpreted as SQL commands, providing strong security guarantees.
+
+#### Basic Usage (Recommended)
+
+The simplest way to use parameterized queries is to pass parameters directly. Types are automatically inferred from your Elixir values:
+
+```elixir
+# With keyword list (most common) - types inferred automatically
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM users WHERE id = {id}",
+  id: 42  # Automatically inferred as UInt64
+)
+# => {:ok, [%{id: 42, name: "Alice", ...}]}
+
+# Multiple parameters - all types inferred
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM events WHERE user_id = {uid} AND status = {status}",
+  uid: 123,       # UInt64
+  status: "active"  # String
+)
+
+# With map
+params = %{id: 42, status: "active"}
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM users WHERE id = {id} AND status = {status}",
+  params
+)
+
+# Explicit types when needed (e.g., Int32 instead of Int64)
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM metrics WHERE count > {threshold:Int32}",
+  threshold: 1000
+)
+```
+
+**Works with all query functions:**
+- `Natch.select_rows/3` - Query with row-major results
+- `Natch.select_cols/3` - Query with columnar results
+- `Natch.execute/3` - Execute INSERT/UPDATE/DELETE with parameters
+
+#### Type Inference
+
+For `select_rows` and `select_cols`, types are **automatically inferred** from parameter values - no type annotations needed!
+
+```elixir
+{:ok, rows} = Natch.select_rows(
+  conn,
+  """
+  SELECT * FROM events
+  WHERE user_id = {uid}
+    AND created_at > {start}
+    AND status = {status}
+  """,
+  uid: 123,                          # Inferred as UInt64
+  start: ~U[2024-01-01 00:00:00Z],  # Inferred as DateTime
+  status: "active"                  # Inferred as String
+)
+```
+
+**Type inference rules:**
+- Non-negative integers → `UInt64`
+- Negative integers → `Int64`
+- Floats → `Float64`
+- Strings → `String`
+- `DateTime` structs → `DateTime`
+- `Date` structs → `Date`
+
+**Note:** For `execute` operations (INSERT/UPDATE/DELETE), explicit types are still required for safety.
+
+**When you need explicit types:**
+```elixir
+# Force Int32 instead of Int64
+{:ok, rows} = Natch.select_rows(conn, "WHERE count = {n:Int32}", n: 100)
+
+# NULL requires explicit type (can't infer from nil)
+{:ok, rows} = Natch.select_rows(conn, "WHERE notes = {notes:Nullable(String)}", notes: nil)
+```
+
+#### Builder Pattern (Complex Cases)
+
+For complex scenarios requiring explicit type control or dynamic parameter binding, use the Query builder:
+
+```elixir
+# Create a query with {name:Type} placeholders
+query = Natch.Query.new("SELECT * FROM users WHERE id = {id:UInt64}")
+|> Natch.Query.bind(:id, 42)
+
+{:ok, rows} = Natch.select_rows(conn, query)
+
+# Explicit type specification with bind/4
+query = Natch.Query.new("SELECT * FROM metrics WHERE count > {min:Int32}")
+|> Natch.Query.bind(:min, 1000, :int32)  # Force Int32 instead of Int64
+
+query = Natch.Query.new("SELECT * FROM data WHERE ratio > {threshold:Float32}")
+|> Natch.Query.bind(:threshold, 0.5, :float32)  # Single precision float
+
+{:ok, rows} = Natch.select_rows(conn, query)
+```
+
+Supported explicit types: `:uint64`, `:uint32`, `:int64`, `:int32`, `:float64`, `:float32`, `:string`, `:datetime`, `:datetime64`, `:date`
+
+#### Examples by Use Case
+
+**SELECT with automatic type inference:**
+```elixir
+# Clean - no type annotations needed!
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM users WHERE id > {min_id} AND status = {status}",
+  min_id: 100,
+  status: "active"
+)
+```
+
+**INSERT with explicit types (required for execute):**
+```elixir
+:ok = Natch.execute(
+  conn,
+  "INSERT INTO events VALUES ({id:UInt64}, {user_id:UInt32}, {event:String}, {ts:DateTime})",
+  id: 1,
+  user_id: 100,
+  event: "login",
+  ts: DateTime.utc_now()
+)
+```
+
+**UPDATE with explicit types:**
+```elixir
+:ok = Natch.execute(
+  conn,
+  "UPDATE users SET status = {status:String} WHERE id = {id:UInt64}",
+  status: "inactive",
+  id: 42
+)
+```
+
+**DELETE with explicit types:**
+```elixir
+:ok = Natch.execute(
+  conn,
+  "DELETE FROM users WHERE created_at < {cutoff:DateTime}",
+  cutoff: ~U[2020-01-01 00:00:00Z]
+)
+```
+
+**NULL support (requires explicit type):**
+```elixir
+# nil values work with Nullable(T) columns
+:ok = Natch.execute(
+  conn,
+  "INSERT INTO users VALUES ({id:UInt64}, {name:String}, {notes:Nullable(String)})",
+  id: 100,
+  name: "Alice",
+  notes: nil  # NULL value
+)
+```
+
+**Columnar output with type inference:**
+```elixir
+{:ok, cols} = Natch.select_cols(
+  conn,
+  "SELECT user_id, revenue FROM events WHERE created_at >= {start}",
+  start: ~U[2024-01-01 00:00:00Z]
+)
+# => {:ok, %{user_id: [1, 2, 3], revenue: [100.0, 200.0, 150.0]}}
+```
+
+#### SQL Injection Prevention
+
+Parameterized queries are **immune to SQL injection** because parameter values are transmitted separately from SQL text:
+
+```elixir
+# ❌ DANGEROUS: String interpolation (vulnerable to SQL injection!)
+malicious_input = "'; DROP TABLE users; --"
+sql = "SELECT * FROM users WHERE name = '#{malicious_input}'"
+Natch.select_rows(conn, sql)  # Would execute DROP TABLE!
+
+# ✅ SAFE: Parameterized query (injection attempts are treated as literal values)
+# Type automatically inferred as String
+{:ok, rows} = Natch.select_rows(
+  conn,
+  "SELECT * FROM users WHERE name = {name}",
+  name: "'; DROP TABLE users; --"
+)
+# Returns no results - the malicious string is safely treated as a name to search for
+```
+
+#### When to Use Parameterized Queries
+
+**Use parameterized queries when:**
+- Query contains user input (form data, API parameters, etc.)
+- Building dynamic WHERE clauses
+- Inserting user-generated content
+- Security is a concern
+
+**String queries are fine for:**
+- Static SQL with no variables
+- Queries constructed entirely from trusted constants
+- DDL operations (CREATE TABLE, etc.)
+- Internal/administrative queries
+
 ### Inserting Data
 
 Natch provides symmetrical insert APIs matching the SELECT operations:
@@ -617,40 +824,41 @@ mix test test/nesting_integration_test.exs
 
 ### Test Coverage
 
-- ✅ **227 tests passing** (as of Phase 5E)
-- ✅ All primitive types (integers, floats, strings, bools)
-- ✅ All temporal types (Date, DateTime, DateTime64)
-- ✅ All special types (UUID, Decimal64, Enum8/16, LowCardinality)
-- ✅ All complex types (Array, Map, Tuple, Nullable)
-- ✅ 14 comprehensive nesting integration tests
-- ✅ Full INSERT→SELECT roundtrip validation
+- All primitive types (integers, floats, strings, bools)
+- All temporal types (Date, DateTime, DateTime64)
+- All special types (UUID, Decimal64, Enum8/16, LowCardinality)
+- All complex types (Array, Map, Tuple, Nullable)
+- Parameterized queries with SQL injection prevention
+- Comprehensive nesting integration tests
+- Full INSERT→SELECT roundtrip validation
 
 ## Roadmap
 
-### Completed (Phase 1-5)
-- ✅ Native TCP protocol support
-- ✅ All ClickHouse primitive types
-- ✅ All temporal types (Date, DateTime, DateTime64)
-- ✅ UUID and Decimal64 support
-- ✅ Nullable types
-- ✅ Array types with arbitrary nesting
-- ✅ Map and Tuple types
-- ✅ Enum8/Enum16 types
-- ✅ LowCardinality types
-- ✅ Complex type nesting (Array(Map(String, Nullable(T))), etc.)
-- ✅ Columnar insert API
-- ✅ LZ4 compression
+### Completed (Phase 1-6C)
+- Native TCP protocol support
+- All ClickHouse primitive types
+- All temporal types (Date, DateTime, DateTime64)
+- UUID and Decimal64 support
+- Nullable types
+- Array types with arbitrary nesting
+- Map and Tuple types
+- Enum8/Enum16 types
+- LowCardinality types
+- Complex type nesting (Array(Map(String, Nullable(T))), etc.)
+- Columnar insert API
+- LZ4 compression
+- **Parameterized queries** with SQL injection prevention (Phase 6C)
 
-### Planned (Phase 6+)
-- ⏳ Explorer DataFrame integration (zero-copy)
-- ⏳ SSL/TLS support
-- ⏳ Connection pooling
-- ⏳ Async query execution
-- ⏳ Prepared statements
+### Planned (Phase 7+)
+- Explorer DataFrame integration (zero-copy)
+- SSL/TLS support (partial - available via clickhouse-cpp)
+- Connection pooling
+- Async query execution
+- Query streaming for large result sets
 
 ### Not Planned
-- ❌ Ecto integration (ClickHouse is OLAP, not OLTP - not a good fit)
-- ❌ HTTP protocol support (use native TCP for better performance)
+- Ecto integration (ClickHouse is OLAP, not OLTP - not a good fit)
+- HTTP protocol support (use native TCP for better performance)
 
 ## Contributing
 

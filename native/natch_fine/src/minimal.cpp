@@ -1,5 +1,6 @@
 #include <fine.hpp>
 #include <clickhouse/client.h>
+#include <clickhouse/query.h>
 #include <clickhouse/exceptions.h>
 #include <string>
 #include <stdexcept>
@@ -8,7 +9,7 @@
 
 using namespace clickhouse;
 
-// Declare Client as a FINE resource
+// Declare Client as FINE resource
 FINE_RESOURCE(Client);
 
 // Helper to escape JSON strings
@@ -190,6 +191,21 @@ fine::Atom client_execute(
   }
 }
 FINE_NIF(client_execute, 0);
+
+// Execute parameterized query
+// Returns :ok atom on success
+fine::Atom client_execute_parameterized(
+    ErlNifEnv *env,
+    fine::ResourcePtr<Client> client,
+    fine::ResourcePtr<Query> query) {
+  try {
+    client->Execute(*query);
+    return fine::Atom("ok");
+  } catch (const std::exception& e) {
+    throw std::runtime_error(encode_clickhouse_error(e));
+  }
+}
+FINE_NIF(client_execute_parameterized, 0);
 
 // Reset connection
 // Returns :ok atom on success

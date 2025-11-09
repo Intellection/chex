@@ -14,11 +14,6 @@ struct ColumnResource {
   ColumnResource(std::shared_ptr<Column> p) : ptr(p) {}
 };
 
-// Declare ColumnResource as extern (defined in column.cpp)
-extern "C" {
-  // FINE will handle the resource type registration
-}
-
 // Wrapper for Block
 struct BlockResource {
   std::shared_ptr<Block> ptr;

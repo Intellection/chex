@@ -56,6 +56,7 @@ add_library(natch_fine SHARED
   src/column.cpp
   src/block.cpp
   src/select.cpp
+  src/query.cpp
 )
 
 # Link against clickhouse-cpp
